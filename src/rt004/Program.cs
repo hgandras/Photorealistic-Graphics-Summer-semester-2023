@@ -3,10 +3,10 @@ using System.Numerics;
 using Util;
 using System.Drawing;
 using System.Globalization;
+using System.Text.Json;
 //using System.Numerics;
 
 namespace rt004;
-
 
 internal class Program
 {
@@ -16,12 +16,19 @@ internal class Program
   {
         // Parameters.
         // TODO: parse command-line arguments and/or your config file.
-        int wid = 600;
-        int hei = 450;
-        string fileName = "demo.pfm";
 
-        Color color1 = Color.FromArgb(255, 255, 255);
-        Color color2 = Color.FromArgb(0, 255, 0);
+        //Default parameters are specified in the config file, and the command-line arguments 
+        //can overwrite them.
+        GeneralConfig config=GeneralConfig.Init("Config.json");
+
+        int wid = config.width;
+        int hei = config.height;
+        string fileName = config.fileName;
+        
+        int[] col1 = ColorTools.hex_to_rgb(Convert.ToInt32(config.color1,16));
+        Color color1 = Color.FromArgb(col1[0], col1[1], col1[2]);
+        int[] col2 = ColorTools.hex_to_rgb(Convert.ToInt32(config.color2, 16));
+        Color color2 = Color.FromArgb(col2[0], col2[1], col2[2]);
 
         foreach (string arg in args)
         {
@@ -57,7 +64,7 @@ internal class Program
                         }
                         else
                         {
-                            int[] col1 = ColorTools.hex_to_rgb((int)c1);
+                            int[] components1 = ColorTools.hex_to_rgb((int)c1);
                             color1 = Color.FromArgb(col1[0], col1[1], col1[2]);
                         }
                         break;
@@ -71,7 +78,7 @@ internal class Program
                         }
                         else
                         {
-                            int[] col2 = ColorTools.hex_to_rgb((int)c2);
+                            int[] components2 = ColorTools.hex_to_rgb((int)c2);
                             color2 = Color.FromArgb(col2[0], col2[1], col2[2]);
                         }
                         break;
@@ -93,6 +100,8 @@ internal class Program
 
         // TODO: put anything interesting into the image.
         // TODO: use fi.PutPixel() function, pixel should be a float[3] array [R, G, B]
+
+        //Linearly interpolates between 2 based on the pixel height in a circle.
         float radius = (float)Math.Min(wid,hei)/2f;
                       
         for (int h = 0; h < hei; h++)
@@ -109,13 +118,11 @@ internal class Program
                     fi.PutPixel(w, h, new float[3] { color_rgb.R, color_rgb.G, color_rgb.B });
                 }
                 else
-                    fi.PutPixel(w, h, new float[3] { 256f, 256f, 256f });
-
-                
+                    fi.PutPixel(w, h, new float[3] { 256f, 256f, 256f });              
             }
         }
 
-        //This part might not work correctly
+        //Save image based on name extension, if that is not given, save as pfm
         string[] name_extension = fileName.Split(".");
         string file_extension;
         if(name_extension.Length==2)

@@ -1,0 +1,17 @@
+﻿{
+  "GeneralConfig": {
+    "height": 600,
+    "width": 600,
+    "fileName": "demo.pfm",
+    "color1": "0x0000FF",
+    "color2": "0xFFFF00"
+  },
+  "CameraConfig": {
+    "Position": [ 0, 0, 0 ],
+    "Orientation": [
+      [1,0,0],
+      [0,1,0],
+      [0,0,1]
+    ]
+  }
+}
