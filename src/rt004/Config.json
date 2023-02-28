@@ -8,10 +8,13 @@
   },
   "CameraConfig": {
     "Position": [ 0, 0, 0 ],
-    "Orientation": [
-      [1,0,0],
-      [0,1,0],
-      [0,0,1]
-    ]
+    "ViewDirection": [ 0, 0, 1 ],
+    "ElevationAngle": 0,
+    "Azimuth": 0,
+    "ProjectionType": "Perspective",
+    "ViewPlaneDistance": 100
+  },
+  "SceneConfig": {
+    "WorldUpDirection": [ 0, 1, 0 ]
   }
 }

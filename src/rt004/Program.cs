@@ -19,15 +19,17 @@ internal class Program
 
         //Default parameters are specified in the config file, and the command-line arguments 
         //can overwrite them.
-        GeneralConfig config=GeneralConfig.Init("Config.json");
+        Config config=new Config("Config.json");
+        GeneralConfig generalConfig = config.GeneralConfig;
 
-        int wid = config.width;
-        int hei = config.height;
-        string fileName = config.fileName;
+
+        int wid = generalConfig.width;
+        int hei = generalConfig.height;
+        string fileName = generalConfig.fileName;
         
-        int[] col1 = ColorTools.hex_to_rgb(Convert.ToInt32(config.color1,16));
+        int[] col1 = ColorTools.hex_to_rgb(Convert.ToInt32(generalConfig.color1,16));
         Color color1 = Color.FromArgb(col1[0], col1[1], col1[2]);
-        int[] col2 = ColorTools.hex_to_rgb(Convert.ToInt32(config.color2, 16));
+        int[] col2 = ColorTools.hex_to_rgb(Convert.ToInt32(generalConfig.color2, 16));
         Color color2 = Color.FromArgb(col2[0], col2[1], col2[2]);
 
         foreach (string arg in args)
