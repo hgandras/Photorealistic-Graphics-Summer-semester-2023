@@ -122,16 +122,17 @@ public class PerspectiveCamera:Camera
 
 	public void Translate(Vector3d Translation)
 	{
-
+		throw new NotImplementedException();
 	}
 
 	public void Rotate(Vector3d Rotation)
 	{
+        throw new NotImplementedException();
 
-	}
+    }
 
 
-    
+
 }
 
 public class FisheyeLense :Camera
@@ -140,8 +141,9 @@ public class FisheyeLense :Camera
 	public Vector3d ViewDirection { get; set; }
 	public FisheyeLense(CameraConfig Camera)
 	{
+        throw new NotImplementedException();
 
-	}
+    }
 
     public void Project()
     {
@@ -150,13 +152,15 @@ public class FisheyeLense :Camera
 
 	public void Translate(Vector3d Translation)
 	{
+        throw new NotImplementedException();
 
-	}
+    }
 
-	public void Rotate(Vector3d Rotation)
+    public void Rotate(Vector3d Rotation)
 	{
+        throw new NotImplementedException();
 
-	}
+    }
 }
 
 
@@ -192,12 +196,12 @@ public class SceneObject:SceneEntity
     
     public void Translate(Vector3d translation)
     {
-
+        throw new NotImplementedException();
     }
 
-  
+
     public void Rotate(Vector3d rotation)
     {
-
+        throw new NotImplementedException();
     }
 }
