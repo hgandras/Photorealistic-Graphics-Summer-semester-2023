@@ -15,13 +15,10 @@ internal class Program
   static void Main(string[] args)
   {
         // Parameters.
-        // TODO: parse command-line arguments and/or your config file.
-
         //Default parameters are specified in the config file, and the command-line arguments 
         //can overwrite them.
         Config config=new Config("Config.json");
         GeneralConfig generalConfig = config.GeneralConfig;
-
 
         int wid = generalConfig.width;
         int hei = generalConfig.height;
@@ -62,7 +59,6 @@ internal class Program
                         {
                             Logging.InvalidArgument(key);
                             color1 = Color.FromArgb(255, 255, 255);
-
                         }
                         else
                         {
@@ -95,13 +91,8 @@ internal class Program
             }
         }
 
-        
-
         // HDR image.
         FloatImage fi = new FloatImage(wid, hei, 3);
-
-        // TODO: put anything interesting into the image.
-        // TODO: use fi.PutPixel() function, pixel should be a float[3] array [R, G, B]
 
         //Linearly interpolates between 2 based on the pixel height in a circle.
         float radius = (float)Math.Min(wid,hei)/2f;
@@ -145,8 +136,6 @@ internal class Program
             fi.SavePFM(fileName+".pfm");
         }
         
-
-
         Console.WriteLine("HDR image is finished.");
   }
 }

@@ -1,25 +1,48 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Numerics;
 using OpenTK.Mathematics;
 
 namespace rt004;
+
+
+
+/// <summary>
+/// The basic instance should be a camera
+/// The concrete products should be the different types of cameras
+/// 
+/// Define abstract creator
+/// Override them to create the concrete creators for all of the different cameras.
+/// 
+/// Call the camera creators in the constructor of the Scene, and in the add camera 
+/// method.
+/// 
+/// TODO: Implement the creation of the particular cameras from the config files.
+/// </summary>
+
 
 public class Scene
 {
 	
 	public Vector3d WorldUpDirection;
 	public List<Camera> Camera;
+	public Camera Cam;
 	public List<SceneObject> Objects;
+	public Vector3d LightSourcePosition; //Maybe different config can be created for the light source later
 
 	/// <summary>
 	/// Set up basic properties of the scene, like Initialize the camera.
 	/// </summary>
 	public Scene(Config config)
 	{
-		//Set up scene and camera configs, and create one Camera object.
-		Camera.Add(new Camera(config.CameraConfig));
-		float[] v = config.SceneConfig.WorldUpDirection;
+		// TODO: Add a perspective camera as the default camera
+		InitPerspectiveCamera camcreator = new InitPerspectiveCamera();
+        Camera.Add(camcreator.Create(config.CameraConfig));
+		Cam = Camera[0];
+        float[] v = config.SceneConfig.WorldUpDirection;
+		float[] l = config.SceneConfig.LightSourcePosition;
 		WorldUpDirection = new Vector3d(v[0], v[1], v[2]);
+		LightSourcePosition = new Vector3d(l[0], l[1], l[2]);
 	}
 
 	public void AddObject()
@@ -28,85 +51,63 @@ public class Scene
 	}
 
 	/// <summary>
-	/// Maybe add support for multiple cameras
+	/// Might add support for multiple cameras
 	/// </summary>
 	/// <param name="Cam"></param>
-	public void SwapCamera(int Cam)
+	public void SwapCamera(int cam_number)
 	{
-
+		Cam = Camera[cam_number];
 	}
 
-}
 
-public abstract class SceneEntity
-{
-	public abstract void Translate(Vector3d translation);
-	public abstract void Rotate(Vector3d rotation);
-	
-}
-
-public interface Projection
-{
-	public void Project();
-}
-
-
-public class Camera:SceneEntity
-{
-	public Vector3d Position;
-	
 	/// <summary>
-	/// Init the camera orientation.
+	/// Should call the Camera's RayCaster function, and generate a value for 
+	/// all of the pixels.
 	/// </summary>
-	/// <param name="Config"></param>
-	public Camera(CameraConfig Config)
+	/// <param name="x"></param>
+	/// <param name="y"></param>
+	public void GenerateImge(int width, int height)
 	{
+		
 	}
+}
 
-	/// <summary>
-	/// Moves the camera in the 3D world.
-	/// </summary>
-	/// <param name="Direction"></param>
-	public override void Translate(Vector3d translation) 
-	{ 
+/// <summary>
+/// Represents the base class for onjects that can be in the scene, like cameras, objects...
+/// </summary>
+public interface SceneEntity
+{
+	public void Translate(Vector3d translation);
+	public void Rotate(Vector3d rotation);
+    public Vector3d Position { get; set; }
 
-	}
-	
-	/// <summary>
-	/// Rotates the camera around the 3 axes.
-	/// </summary>
-	/// <param name="Angles"></param>
-	public override void Rotate(Vector3d rotation)
-	{ 
-	
-	}
 
+}
+
+
+
+public interface Camera:SceneEntity
+{
 	/// <summary>
 	/// Moves the plane along the camera moving direction, so the viewplane
 	/// cuts out a larger area from the scene.
 	/// </summary>
 	/// <param name="Distance"></param>
-	public void SetFOV(float Distance)
+	public void SetFOV(float Distance){ }
+	public Vector3d ViewDirection { get; set; }
+	public void Project()
 	{ 
-	
 	}
-
-	/// <summary>
-	/// ???
-	/// </summary>
-	public void CastRay()
-	{
-
-	}
-
-	
 }
 
-public class PerspectiveCamera:Camera,Projection
+public class PerspectiveCamera:Camera
 {
-    public PerspectiveCamera(CameraConfig Camera): base(Camera)
-	{
+	public Vector3d Position { get; set; }
+	public Vector3d ViewDirection { get; set; }
 
+    public PerspectiveCamera(CameraConfig Camera)
+	{
+	
 	}
 
 	/// <summary>
@@ -114,18 +115,30 @@ public class PerspectiveCamera:Camera,Projection
 	/// property of the whole scene.
 	/// </summary>
 	/// <exception cref="NotImplementedException"></exception>
-    public void Project()
-    {
-        throw new NotImplementedException();
-    }
+	public void Project()
+	{
+		throw new NotImplementedException();
+	}
+
+	public void Translate(Vector3d Translation)
+	{
+
+	}
+
+	public void Rotate(Vector3d Rotation)
+	{
+
+	}
 
 
     
 }
 
-public class FisheyeLense :Camera,Projection
+public class FisheyeLense :Camera
 {
-	public FisheyeLense(CameraConfig Camera):base(Camera)
+	public Vector3d Position { get; set; }
+	public Vector3d ViewDirection { get; set; }
+	public FisheyeLense(CameraConfig Camera)
 	{
 
 	}
@@ -134,23 +147,56 @@ public class FisheyeLense :Camera,Projection
     {
         throw new NotImplementedException();
     }
+
+	public void Translate(Vector3d Translation)
+	{
+
+	}
+
+	public void Rotate(Vector3d Rotation)
+	{
+
+	}
 }
 
 
+//Creator classes for cameras
+public abstract class CamCreator
+{
+	public abstract Camera Create(CameraConfig config); 
+}
+
+public class InitPerspectiveCamera:CamCreator
+{
+    public override Camera Create(CameraConfig config)
+    {
+		return new PerspectiveCamera(config);
+    }
+}
+
+public class InitFisheyeLenseCamera:CamCreator
+{
+    public override Camera Create(CameraConfig config)
+    {
+		return new FisheyeLense(config);
+    }
+}
+
 
 /// <summary>
-/// Represents an SceneObject in the scene
+/// Represents an SceneObject in the scene. Going to be a tree structure, that stores the vertices, edges, planes etc...
 /// </summary>
 public class SceneObject:SceneEntity
 {
+	public Vector3d Position { get; set; }
     
-    public override void Translate(Vector3d translation)
+    public void Translate(Vector3d translation)
     {
 
     }
 
   
-    public override void Rotate(Vector3d rotation)
+    public void Rotate(Vector3d rotation)
     {
 
     }

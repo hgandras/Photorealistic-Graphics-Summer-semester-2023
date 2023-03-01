@@ -58,12 +58,12 @@ public class CameraConfig
     public float[] ViewDirection { get; set; }
     public float ElevationAngle { get; set; }
     public float Azimuth { get; set; }
-    public string PrejectionType { get; set; }
     public float ViewPlaneDistance { get; set; } 
 }
 
 public class SceneConfig
 {
     public float[] WorldUpDirection { get; set; }
+    public float[] LightSourcePosition { get; set; }
 
 }
