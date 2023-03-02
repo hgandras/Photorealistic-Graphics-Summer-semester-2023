@@ -8,37 +8,44 @@ namespace rt004;
 
 
 /// <summary>
-/// The basic instance should be a camera
-/// The concrete products should be the different types of cameras
-/// 
-/// Define abstract creator
-/// Override them to create the concrete creators for all of the different cameras.
-/// 
-/// Call the camera creators in the constructor of the Scene, and in the add camera 
-/// method.
-/// 
-/// TODO: Implement the creation of the particular cameras from the config files.
+/// The idea is that the scene supports multiple objects and cameras. There is always a current camera,
+/// and a current object, and you can switch between them. Operations can only be done on the current ones.
 /// </summary>
 
 
 public class Scene
 {
-	
-	public Vector3d WorldUpDirection;
-	public List<Camera> Camera;
+    public Vector3d LightSourcePosition;
+    public Vector3d WorldUpDirection;
 	public Camera Cam;
-	public List<SceneObject> Objects;
-	public Vector3d LightSourcePosition; //Maybe different config can be created for the light source later
+	public Object Object;
+	public int ObjectCount { get { return Objects.Count(); } }
+	public int CamCount { get { return Cameras.Count(); } }	
+
+
+    private List<SceneObject> Objects;
+    private List<Camera> Cameras;
 
 	/// <summary>
-	/// Set up basic properties of the scene, like Initialize the camera.
+	/// Emppty constructor, so Scene can be initialized without config.
 	/// </summary>
-	public Scene(Config config)
+	public Scene()
 	{
-		// TODO: Add a perspective camera as the default camera
-		InitPerspectiveCamera camcreator = new InitPerspectiveCamera();
-        Camera.Add(camcreator.Create(config.CameraConfig));
-		Cam = Camera[0];
+        Objects = new List<SceneObject>();
+		Cameras = new List<Camera>();
+    }
+
+    /// <summary>
+    /// Set up basic properties of the scene, like Initialize the camera from the config file.
+    /// </summary>
+    public Scene(Config config)
+	{
+		Objects= new List<SceneObject>();
+        Cameras = new List<Camera>
+		{
+			new PerspectiveCamera(config.CameraConfig,config.GeneralConfig.width,config.GeneralConfig.height)
+		};
+        Cam = Cameras[0];
         float[] v = config.SceneConfig.WorldUpDirection;
 		float[] l = config.SceneConfig.LightSourcePosition;
 		WorldUpDirection = new Vector3d(v[0], v[1], v[2]);
@@ -50,139 +57,157 @@ public class Scene
 
 	}
 
-	/// <summary>
-	/// Might add support for multiple cameras
-	/// </summary>
-	/// <param name="Cam"></param>
-	public void SwapCamera(int cam_number)
+	public void RemoveObject()
 	{
-		Cam = Camera[cam_number];
+
 	}
 
+	public void SwapCamera(int cam_ID)
+	{
+		Cam = Cameras[cam_ID];
+	}
 
-	/// <summary>
-	/// Should call the Camera's RayCaster function, and generate a value for 
-	/// all of the pixels.
-	/// </summary>
-	/// <param name="x"></param>
-	/// <param name="y"></param>
+	public void SwapObject(int obj_ID)
+	{
+		Object = Objects[obj_ID];
+	}
+	
 	public void GenerateImge(int width, int height)
 	{
 		
 	}
 }
 
-/// <summary>
-/// Represents the base class for onjects that can be in the scene, like cameras, objects...
-/// </summary>
+
 public interface SceneEntity
 {
-	public void Translate(Vector3d translation);
-	public void Rotate(Vector3d rotation);
     public Vector3d Position { get; set; }
+    public void Translate(Vector3d translation);
+	public void Rotate(Vector3d rotation);
+}
 
-
+/// <summary>
+/// Includes the type of projection, and plane properties (width, height, and distance from the camera).
+/// </summary>
+public interface Projection
+{
+	public int PlaneWidth { get; set; }
+	public int PlaneHeight { get; set; }
+	public float PlaneDistance { get; set; }
+	public float GetPixel(Vector3d RayDirection);
 }
 
 
 
-public interface Camera:SceneEntity
+public class Camera:SceneEntity
 {
-	/// <summary>
-	/// Moves the plane along the camera moving direction, so the viewplane
-	/// cuts out a larger area from the scene.
-	/// </summary>
-	/// <param name="Distance"></param>
-	public void SetFOV(float Distance){ }
-	public Vector3d ViewDirection { get; set; }
-	public void Project()
-	{ 
+
+	public float AzimuthAngle;
+	public float ElevationAngle;
+    public Vector3d ViewDirection { 
+		get { return new Vector3d(vd[0], vd[1], vd[2]); } 
+		set 
+		{
+			vd[0] = (float)value.X;
+            vd[1] = (float)value.Y;
+            vd[2] = (float)value.Z;
+        }
 	}
-}
+    public Vector3d Position
+    {
+        get { return new Vector3d(pos[0], pos[1], pos[2]); }
+        set
+        {
+            pos[0] = (float)value.X;
+            pos[1] = (float)value.Y;
+            pos[2] = (float)value.Z;
+        }
+    }
 
-public class PerspectiveCamera:Camera
-{
-	public Vector3d Position { get; set; }
-	public Vector3d ViewDirection { get; set; }
+    private float[] vd=new float[3];
+	private float[] pos = new float[3];
 
-    public PerspectiveCamera(CameraConfig Camera)
+	public Camera(CameraConfig config)
 	{
-	
-	}
-
-	/// <summary>
-	/// The projection should return the generated image. The image can also be a 
-	/// property of the whole scene.
-	/// </summary>
-	/// <exception cref="NotImplementedException"></exception>
-	public void Project()
-	{
-		throw new NotImplementedException();
+		vd = config.ViewDirection;
+		pos = config.Position;
+		AzimuthAngle = config.Azimuth;
+		ElevationAngle = config.ElevationAngle;
 	}
 
 	public void Translate(Vector3d Translation)
 	{
-		throw new NotImplementedException();
+
 	}
 
 	public void Rotate(Vector3d Rotation)
 	{
-        throw new NotImplementedException();
 
-    }
-
-
-
+	}
+	public void SetFOV(float Distance) { }
 }
 
-public class FisheyeLense :Camera
+public class PerspectiveCamera:Camera,Projection
 {
-	public Vector3d Position { get; set; }
-	public Vector3d ViewDirection { get; set; }
-	public FisheyeLense(CameraConfig Camera)
-	{
-        throw new NotImplementedException();
-
+	public float PlaneDistance { get; set; }
+	public int PlaneWidth
+    {
+        get { return width; }
+        set { width = value; }
     }
 
-    public void Project()
+    public int PlaneHeight 
+	{ 
+		get { return height; } 
+		set { height = value; } 
+	}
+
+	private int width;
+	private int height;
+	
+    public PerspectiveCamera(CameraConfig config, int w, int h) :base(config)
+	{
+		width = w;
+		height = h;
+		PlaneDistance = config.ViewPlaneDistance;
+	}
+	public float GetPixel(Vector3d RayDirection)
+	{
+		throw new NotImplementedException();
+	}
+}
+
+
+/// <summary>
+/// Won't be implemented for a while, only if I have time.
+/// </summary>
+public class FisheyeLense :Camera,Projection
+{
+
+	public float PlaneDistance { get; set; }
+    public int PlaneWidth
+    {
+        get { return width; }
+        set { width = value; }
+    }
+
+    public int PlaneHeight
+    {
+        get { return height; }
+        set { height = value; }
+    }
+
+    private int width;
+    private int height;
+    public FisheyeLense(CameraConfig config, int w, int h) :base(config)
+	{
+		width = w;
+		height = h;
+		PlaneDistance = config.ViewPlaneDistance;
+    }
+    public float GetPixel(Vector3d RayDirection)
     {
         throw new NotImplementedException();
-    }
-
-	public void Translate(Vector3d Translation)
-	{
-        throw new NotImplementedException();
-
-    }
-
-    public void Rotate(Vector3d Rotation)
-	{
-        throw new NotImplementedException();
-
-    }
-}
-
-
-//Creator classes for cameras
-public abstract class CamCreator
-{
-	public abstract Camera Create(CameraConfig config); 
-}
-
-public class InitPerspectiveCamera:CamCreator
-{
-    public override Camera Create(CameraConfig config)
-    {
-		return new PerspectiveCamera(config);
-    }
-}
-
-public class InitFisheyeLenseCamera:CamCreator
-{
-    public override Camera Create(CameraConfig config)
-    {
-		return new FisheyeLense(config);
     }
 }
 

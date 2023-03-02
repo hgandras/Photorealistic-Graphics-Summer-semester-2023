@@ -135,7 +135,9 @@ internal class Program
         {
             fi.SavePFM(fileName+".pfm");
         }
-        
+
+        Scene scene = new Scene(config);
+
         Console.WriteLine("HDR image is finished.");
   }
 }
