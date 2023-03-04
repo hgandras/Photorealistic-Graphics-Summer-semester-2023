@@ -27,6 +27,9 @@ public class Scene
 	public Camera Cam;
 	public Object Object;
 	public Plane Plane;
+
+	
+
 	public int ObjectCount { get { return Objects.Count(); } }
 	public int CamCount { get { return Cameras.Count(); } }
 	public int PlaneWidthPx;
@@ -114,8 +117,9 @@ public abstract class SceneEntity
 }
 
 /// <summary>
-/// Includes the type of projection, and plane properties (width, height, and distance from the camera).
-/// 
+/// Includes the type of projection, and plane properties (width, height, and distance from the camera). 
+/// TODO: Decide whether the plane properties will just be part of the camera class, because most of its 
+/// parameters are projection specific.
 /// </summary>
 public class Plane
 {
@@ -131,12 +135,9 @@ public class Plane
 	}
 }
 
-public interface Projection
-{
-	public Vector3d CastRay(Plane plane,int px_x,int px_y);
-}
 
-public class Camera:SceneEntity,Projection
+
+public class Camera:SceneEntity
 {	
     public int SamplesPerPixel; //Just an idea, might be used later.
     public Vector3d ViewDirection { 
@@ -190,7 +191,7 @@ public class Camera:SceneEntity,Projection
 	
 }
 
-public class PerspectiveCamera:Camera,Projection
+public class PerspectiveCamera:Camera
 {
     public float FOV;
     public PerspectiveCamera(CameraConfig config) :base(config)
@@ -232,7 +233,6 @@ public class PerspectiveCamera:Camera,Projection
 /// </summary>
 public class ParallelCamera :Camera
 {
-    public int SamplesPerPixel { get; set; }
     public float PlaneDistance { get; set; }
     
     public ParallelCamera(CameraConfig config) :base(config)
@@ -247,11 +247,12 @@ public class ParallelCamera :Camera
 
 
 /// <summary>
-/// Represents an SceneObject in the scene. Going to be a tree structure, that stores the vertices, edges, planes etc...
+/// Represents an SceneObject in the scene. Also defines operations between the scene objects. 
 /// </summary>
 public class SceneObject:SceneEntity
 {
 	public override Vector3d Position { get; set; }
+
     
     public override void Translate(Vector3d translation)
     {
@@ -262,4 +263,76 @@ public class SceneObject:SceneEntity
     {
         throw new NotImplementedException();
     }
+
+	/// <summary>
+	/// The function calculates the intersection between the object's sphere, and the casted ray.
+	/// </summary>
+	/// <param name="Ray"></param>
+	/// <returns></returns>
+	public virtual Vector3d Intersection(Vector3d Ray)
+	{
+		return Vector3d.Zero;
+	}
+
+	/// <summary>
+	/// Set operations can be implemented between the solids
+	/// </summary>
+	public void And()
+	{
+
+	}
+
+	public void Or()
+	{
+
+	}
+
+	public void Subtract()
+	{
+
+	}
+
+	public void XOR()
+	{
+
+	}
+
+
+
+}
+
+
+public class Sphere:SceneObject
+{
+	public float Radius;
+
+	public Sphere(float R, Vector3d Pos)
+	{
+		Radius = R;
+		Position = Pos;
+	}
+
+    public override Vector3d Intersection(Vector3d Ray)
+    {
+        return base.Intersection(Ray);
+    }
+}
+
+public class Cylinder:SceneObject
+{
+	public float Radius,Height;
+
+	public Cylinder(float Rad,float Hei,Vector3d Pos)
+	{
+		Radius = Rad;
+		Height = Hei;
+		Position = Pos;
+	}
+
+    public override Vector3d Intersection(Vector3d Ray)
+    {
+        return base.Intersection(Ray);
+    }
+
+
 }
