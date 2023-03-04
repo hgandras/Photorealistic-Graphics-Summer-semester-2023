@@ -18,6 +18,7 @@ public class Config
     public CameraConfig CameraConfig;
     public SceneConfig SceneConfig;
     public GeneralConfig GeneralConfig;
+    public PlaneConfig PlaneConfig;
 
     public Config(string ConfigFile) 
     {
@@ -26,11 +27,13 @@ public class Config
         var camobj = Obj.RootElement.GetProperty("CameraConfig");
         var sceneobj = Obj.RootElement.GetProperty("SceneConfig");
         var genobj = Obj.RootElement.GetProperty("GeneralConfig");
+        var planeobj = Obj.RootElement.GetProperty("PlaneConfig");
         try
         {
             CameraConfig = JsonSerializer.Deserialize<CameraConfig>(camobj);
             SceneConfig = JsonSerializer.Deserialize<SceneConfig>(sceneobj);
             GeneralConfig = JsonSerializer.Deserialize<GeneralConfig>(genobj);
+            PlaneConfig = JsonSerializer.Deserialize<PlaneConfig>(planeobj);
         }
         catch (NullReferenceException)
         {
@@ -41,12 +44,11 @@ public class Config
 }
 
 /// <summary>
-/// Set up getters and setters later if necessary.
+/// Set up getters and setters later if necessary. General config will probably 
+/// won't be used later.
 /// </summary>
 public class GeneralConfig
 {   
-    public int width { get; set; }
-    public int height { get; set; }
     public string fileName { get;   set; } 
     public string color1{ get; set; }
     public string color2 { get; set; }
@@ -56,9 +58,8 @@ public class CameraConfig
 {
     public float[] Position { get; set; }
     public float[] ViewDirection { get; set; }
-    public float ElevationAngle { get; set; }
-    public float Azimuth { get; set; }
-    public float ViewPlaneDistance { get; set; } 
+    public int SamplesPerPx { get; set; }
+    public float FOV { get; set; }
 }
 
 public class SceneConfig
@@ -66,4 +67,11 @@ public class SceneConfig
     public float[] WorldUpDirection { get; set; }
     public float[] LightSourcePosition { get; set; }
 
+}
+
+public class PlaneConfig
+{
+    public int Height { get; set; }
+    public int Width { get; set; }
+    public float DistanceFromCamera { get; set; }
 }

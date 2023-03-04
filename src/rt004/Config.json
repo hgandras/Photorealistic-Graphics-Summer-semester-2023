@@ -1,7 +1,5 @@
 ﻿{
   "GeneralConfig": {
-    "height": 600,
-    "width": 600,
     "fileName": "demo.pfm",
     "color1": "0x0000FF",
     "color2": "0xFFFF00"
@@ -9,12 +7,16 @@
   "CameraConfig": {
     "Position": [ 0, 0, 0 ],
     "ViewDirection": [ 0, 0, 1 ],
-    "ElevationAngle": 0,
-    "Azimuth": 0,
-    "ViewPlaneDistance": 100
+    "SamplesPerPx": 1,
+    "FOV": 90
   },
   "SceneConfig": {
     "WorldUpDirection": [ 0, 1, 0 ],
-    "LightSourcePosition": [0,10,0]
+    "LightSourcePosition": [ 0, 10, 0 ]
+  },
+  "PlaneConfig": {
+    "Height": 450,
+    "Width": 600,
+    "DistanceFromCamera": 50
   }
 }

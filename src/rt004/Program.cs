@@ -20,8 +20,8 @@ internal class Program
         Config config=new Config("Config.json");
         GeneralConfig generalConfig = config.GeneralConfig;
 
-        int wid = generalConfig.width;
-        int hei = generalConfig.height;
+        int wid = config.PlaneConfig.Width;
+        int hei = config.PlaneConfig.Height;
         string fileName = generalConfig.fileName;
         
         int[] col1 = ColorTools.hex_to_rgb(Convert.ToInt32(generalConfig.color1,16));
@@ -137,7 +137,7 @@ internal class Program
         }
 
         Scene scene = new Scene(config);
-
+        scene.GenerateImage();
         Console.WriteLine("HDR image is finished.");
   }
 }
