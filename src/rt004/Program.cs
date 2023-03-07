@@ -137,7 +137,8 @@ internal class Program
         }
 
         Scene scene = new Scene(config);
-        scene.GenerateImage();
+        FloatImage img=scene.GenerateImage();
+        img.SavePFM("PathTrace.pfm");
         Console.WriteLine("HDR image is finished.");
   }
 }

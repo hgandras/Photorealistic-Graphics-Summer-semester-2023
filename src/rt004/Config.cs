@@ -57,7 +57,7 @@ public class GeneralConfig
 public class CameraConfig 
 {
     public float[] Position { get; set; }
-    public float[] ViewDirection { get; set; }
+    public float[] Target { get; set; }
     public int SamplesPerPx { get; set; }
     public float FOV { get; set; }
 }
@@ -73,5 +73,5 @@ public class PlaneConfig
 {
     public int Height { get; set; }
     public int Width { get; set; }
-    public float DistanceFromCamera { get; set; }
+    public float DistanceFromCamera { get; set; } //This property is unecessary
 }

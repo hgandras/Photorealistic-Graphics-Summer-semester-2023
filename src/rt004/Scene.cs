@@ -1,7 +1,10 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Numerics;
+using System.Reflection.Metadata.Ecma335;
+using System.Runtime.CompilerServices;
 using OpenTK.Mathematics;
+using Util;
 
 namespace rt004;
 
@@ -17,7 +20,16 @@ namespace rt004;
 
 /*
  * TODO: Create empty camera type constructors
+ * 
  * TODO: Init value of the Object variable, so its not null upon exiting the Scene constructor
+ * 
+ * TODO: When we add a camera to the Scene, it should be bounded, and the camera should have the world up vector as its field, so
+ * the X,Y,Z basis vectors in world coordinates can be accessed as a property. A camera can also be removed, so its world up Vector3d 
+ * can be set to null. Or a camera just simply has the scene it is contained in as a field, so it can acces its properties.
+ * 
+ * TODO: Add a dictionary to the Ray class, which contains the Object as key, and the intersection points as 
+ *		 the value. This way set operations on objects might be easier to implement later, and more complex 
+ *		 objects can be created.
  */
 
 public class Scene
@@ -27,8 +39,6 @@ public class Scene
 	public Camera Cam;
 	public Object Object;
 	public Plane Plane;
-
-	
 
 	public int ObjectCount { get { return Objects.Count(); } }
 	public int CamCount { get { return Cameras.Count(); } }
@@ -56,7 +66,7 @@ public class Scene
 		Objects= new List<SceneObject>();
         Cameras = new List<Camera>
 		{
-			new PerspectiveCamera(config.CameraConfig)
+			new PerspectiveCamera(config.CameraConfig,this)
 		};
         Cam = Cameras[0];
         float[] v = config.SceneConfig.WorldUpDirection;
@@ -64,12 +74,26 @@ public class Scene
 		WorldUpDirection = new Vector3d(v[0], v[1], v[2]);
 		LightSourcePosition = new Vector3d(l[0], l[1], l[2]);
 		Plane = new Plane(config.PlaneConfig);
+		AddObject(new Vector3d(0,0,0),"Sphere"); //By default adds a sphere to the scene in the origin with default parameters
+												 //so objects is not null
 	}
 
-	public void AddObject()
+	/// <summary>
+	/// Adds an object with the default parameters provided in the object type's class definition.
+	/// </summary>
+	/// <param name="ObjPosition"></param>
+	/// <param name="shape"></param>
+	public void AddObject(Vector3d ObjPosition,string shape)
 	{
-
-	}
+		SceneObject new_object;
+		switch(shape)
+		{
+			case "Sphere":
+				new_object = new Sphere( new float[] { 200.0f, 0.0f, 0.0f },ObjPosition);
+                Objects.Add(new_object);
+                break; 
+        }
+    }
 
 	public void RemoveObject()
 	{
@@ -90,30 +114,101 @@ public class Scene
 	/// For each pixel in the plane get as many sample points as it is defined by the camera's property,
 	/// and based on the sample points, generate the ray direction vectors. After that, for all rays, calculate 
 	/// the intersection of all objects in the scene, and based on that the reflection, and the pixel color value
-	/// in float.
+	/// in float. This part can be parallelized.
 	/// </summary>
 	/// <param name="width"></param>
 	/// <param name="height"></param>
-	public void GenerateImage()
+	public FloatImage GenerateImage()
 	{
+		FloatImage image = new FloatImage(Plane.PxWidth,Plane.PxHeight,3);
+
+        //Transform all object's positions to the camera's system
+
+        List<Vector3d> obj_positions = new List<Vector3d>();
+		foreach (SceneObject obj in Objects)
+		{
+			obj_positions.Add(Cam.LookAt(obj,Cam.Position)); 
+		}
+        Console.WriteLine(Cam.Position);
+        Console.WriteLine(Objects[0].Position);
+		Console.WriteLine(obj_positions[0]);
+		//Iterate through the pixels
 		for(int h=0;h<Plane.PxHeight;h++)
 		{
 			for(int w=0;w<Plane.PxWidth;w++)
 			{
-				Vector3d ray=Cam.CastRay(Plane, w, h);
+				//Cast the rays for each h,w pixel
+				Ray ray=Cam.CastRay(Plane, w, h);
+				for(int i=0;i<Objects.Count();i++)
+				{
+					//If the ray intersects the object, set pixel color value to the object's value, else black.
+					float[]? intersections = Objects[i].Intersection(ray, obj_positions[i]);
+
+                    if(intersections==null)
+                        image.PutPixel(w, h, 0);
+                    else if(intersections.Count()>=1)
+					{
+						image.PutPixel(w, h, Objects[i].Color);
+					}
+				}
 			}
 		}
+		return image;
 	}
 }
 
 /// <summary>
-/// Represents movable objects in the scene like light sources, objects, cameras. 
+/// Represents movable objects in the scene like light sources, objects, cameras. Rewrite as not an abstract class. 
 /// </summary>
-public abstract class SceneEntity
+public class SceneEntity
 {
-    public abstract Vector3d Position { get; set; }
-    public abstract void Translate(Vector3d translation);
-	public abstract void Rotate(Vector3d rotation);
+    protected Vector4d homogeneous_pos;
+	protected float[] pos;
+    public Vector3d Position
+    {
+        get {  return homogeneous_pos.Xyz; }
+        set
+        {
+            pos[0] = (float)value.X;
+            pos[1] = (float)value.Y;
+            pos[2] = (float)value.Z;
+
+            homogeneous_pos = new Vector4d(pos[0], pos[1], pos[2], 1);
+        }
+    }
+
+	public SceneEntity()
+	{
+		pos=new float[3];
+	}
+
+    public void Translate(Vector3d Translation)
+    {
+        Matrix4d translation_matrix = Matrix4d.CreateTranslation(Translation);
+        homogeneous_pos = translation_matrix * homogeneous_pos;
+    }
+
+    /// <summary>
+    /// Rotates the camera around in the world's coordinate system.
+    /// </summary>
+    /// <param name="Rotation"></param>
+    private void RotateX(Vector3d Rotation)
+    {
+        Matrix4d rotationX = Matrix4d.CreateRotationX(Rotation.X);
+        homogeneous_pos = rotationX * homogeneous_pos;
+    }
+    public void RotateY(Vector3d Rotation)
+    {
+
+        Matrix4d rotationY = Matrix4d.CreateRotationY(Rotation.Y);
+		homogeneous_pos = rotationY * homogeneous_pos;
+    }
+    public void RotateZ(Vector3d Rotation)
+    {
+        Matrix4d rotationZ = Matrix4d.CreateRotationZ(Rotation.Z);
+		homogeneous_pos = rotationZ * homogeneous_pos;
+    }
+
 }
 
 /// <summary>
@@ -135,60 +230,133 @@ public class Plane
 	}
 }
 
+public class Ray
+{
+	public Vector3d Origin { get; set; }
+	public Vector3d Direction { get; set; }
+}
 
 
-public class Camera:SceneEntity
-{	
+
+public class Camera : SceneEntity
+{
+	private Scene? Scene;
+
     public int SamplesPerPixel; //Just an idea, might be used later.
-    public Vector3d ViewDirection { 
-		get { return new Vector3d(vd[0], vd[1], vd[2]); } 
-		set 
+	public Vector3d Target {
+		get { return new Vector3d(t[0], t[1], t[2]); }
+		set
 		{
-			vd[0] = (float)value.X;
-            vd[1] = (float)value.Y;
-            vd[2] = (float)value.Z;
-        }
+			t[0] = (float)value.X;
+			t[1] = (float)value.Y;
+			t[2] = (float)value.Z;
+		}
 	}
-    public override Vector3d Position
-    {
-        get { return new Vector3d(pos[0], pos[1], pos[2]); }
-        set
-        {
-            pos[0] = (float)value.X;
-            pos[1] = (float)value.Y;
-            pos[2] = (float)value.Z;
-        }
-    }
-
-    private float[] vd=new float[3];
-	private float[] pos = new float[3];
+	private float[] t = new float[3];
 
 	public Camera(CameraConfig config)
 	{
-		vd = config.ViewDirection;
+		t = config.Target;
 		pos = config.Position;
+		homogeneous_pos = new Vector4d(pos[0], pos[1], pos[2], 1);
 		SamplesPerPixel = config.SamplesPerPx;
 	}
 
-	public override void Translate(Vector3d Translation)
+	public Camera(CameraConfig config,Scene scene):this(config)
 	{
-
+		Scene = scene;
 	}
 
-	public override void Rotate(Vector3d Rotation)
-	{
-
+	/// <summary>
+	/// A 3x3 matrix which's rows contain the camera coordinate system axes in the world coordinate system.
+	/// </summary>
+	public Matrix3d CameraSystem {
+		get 
+		{
+			if (Scene != null)
+			{
+				Vector3d Z = Vector3d.Normalize(Position - Target); //Target is in -Z
+				Vector3d X = Vector3d.Normalize(Vector3d.Cross(Scene.WorldUpDirection, Z));
+				Vector3d Y = Vector3d.Normalize(Vector3d.Cross(Z,X));
+				return new Matrix3d(X, Y, Z);
+			}
+			else
+			{
+				Console.WriteLine("WARNING: Scene is not set for camera.");//Create logging for this 
+				return new Matrix3d();
+			}
+		}
 	}
 
-	public void TransformToCameraSystem(SceneEntity sceneEntity)
-	{
+	/// <summary>
+	/// Camera's X axis in the world coordinate system
+	/// </summary>
+	public Vector3d CamX { get { return CameraSystem.Row0; } }
+	/// <summary>
+	/// Camera's Y axis in the world coordinate system
+	/// </summary>
+	public Vector3d CamY { get { return CameraSystem.Row1; } }
+	/// <summary>
+	/// Camera's Z axis in the world coordinate system
+	/// </summary>
+	public Vector3d CamZ { get { return CameraSystem.Row2; } }
 
-	}
-	public virtual Vector3d CastRay(Plane plane, int px_x, int px_y)
+	/// <summary>
+	/// This lets the camera to associate it with a scene, if it was not set in the constructor.
+	/// </summary>
+	/// <param name="scene"></param>
+	public void BindScene(Scene scene)
 	{
-		return Vector3d.Zero;
+		Scene=scene;
 	}
-	
+
+	/// <summary>
+	/// Sets the camera to look at the specified point, and transforms that point's position to 
+	/// the camera's coordinate system.
+	/// </summary>
+	/// <param name="target">The object to be transformed in world coordinates</param>
+	/// <param name="cam_position">The position of the camera in the world system</param>
+	public Vector3d LookAt(Vector3d target,Vector3d cam_position)
+	{
+		//TODO: Rework this
+		Target=target;
+		Position = cam_position;
+		Console.WriteLine("Camera Position: "+Position);
+		Console.WriteLine("Target position: "+Target);
+		Vector4d TargetInCameraSystem = new Vector4d();
+		Matrix4d camSystem = new Matrix4d(new Vector4d(CamX,0), new Vector4d(CamY, 0), new Vector4d(CamZ, 0), new Vector4d(0, 0, 0, 1));
+		Matrix4d translation = Matrix4d.CreateTranslation(-Position);
+		translation.Transpose(); //OpenTK puts the translation to the last ROW, not the last column ???
+		
+		Vector4d lookat_cam_system = new Vector4d(Target,1);
+		Vector4d translated = translation * lookat_cam_system;
+		TargetInCameraSystem = camSystem *translated;
+
+		return TargetInCameraSystem.Xyz;
+	}
+
+    /// <summary>
+    /// Sets the camera to look at the specified object's location, and transforms that point's position to 
+    /// the camera's coordinate system.
+    /// </summary>
+    /// <param name="obj"></param>
+    public Vector3d LookAt(SceneObject obj,Vector3d cam_position)
+	{
+		return LookAt(obj.Position,cam_position);
+	}
+
+    /// <summary>
+    /// Returns the object's position in the camera world space, if the camera is position in the origin.
+    /// </summary>
+    /// <param name="sceneEntity"></param>
+    public Vector3d TransformToCameraSystem(SceneEntity sceneEntity)
+	{
+		return CameraSystem * sceneEntity.Position;
+	}
+	public virtual Ray CastRay(Plane plane, int px_x, int px_y)
+	{
+		return new Ray();
+	}
 }
 
 public class PerspectiveCamera:Camera
@@ -197,6 +365,10 @@ public class PerspectiveCamera:Camera
     public PerspectiveCamera(CameraConfig config) :base(config)
 	{
 		FOV = config.FOV;
+	}
+	public PerspectiveCamera(CameraConfig config, Scene scene):base(config,scene)
+	{
+		FOV=config.FOV;
 	}
 
 	/// <summary>
@@ -207,26 +379,26 @@ public class PerspectiveCamera:Camera
 	/// <param name="px_y"></param>
 	/// <returns>The ray's direction vector in the camera coordinate system.</returns>
 	/// <exception cref="NotImplementedException"></exception>
-	public override Vector3d CastRay(Plane plane, int px_x, int px_y)
+	public override Ray CastRay(Plane plane, int px_x, int px_y)
 	{
-		
-		//Calculate real size of the plane. Calculations can be faster, if real plane size is precomputed.
-		double w =2f* plane.DistanceFromCamera * Math.Tan( (FOV/2f)*Math.PI/180);
+
+		//Calculate size of the plane, if the width is considered to be size 2
+		double w = 2;
 		double h = plane.PxHeight * (w /plane.PxWidth);
 		
 		double w_pixel_step = w / plane.PxWidth;
 		double h_pixel_step=h/plane.PxHeight;
 		
+
         double x = px_x * w_pixel_step + w_pixel_step / 2 - w / 2;
 		double y = px_y * h_pixel_step + h_pixel_step / 2 - h / 2;
-        //The intersected point in the plane in the camera system
-        Vector3d intersection_point =new Vector3d(x,y,-plane.DistanceFromCamera);
+		//The intersected point in the plane in the camera system
+		double z = (w / 2f) / Math.Tan(FOV / 360f * Math.PI);
+        Vector3d intersection_point =new Vector3d(x,-y,-z);
 		
-		return Vector3d.Normalize(intersection_point);
-		
+		return new Ray{ Origin=Vector3d.Zero,Direction=Vector3d.Normalize(intersection_point) };
 	}
 }
-
 
 /// <summary>
 /// Won't be implemented for a while, only if I have time.
@@ -239,7 +411,11 @@ public class ParallelCamera :Camera
 	{
 		
     }
-    public override Vector3d CastRay(Plane plane, int px_x, int px_y)
+	public ParallelCamera(CameraConfig config, Scene scene):base(config,scene)
+	{
+
+	}
+    public override Ray CastRay(Plane plane, int px_x, int px_y)
     {
         throw new NotImplementedException();
     }
@@ -251,54 +427,26 @@ public class ParallelCamera :Camera
 /// </summary>
 public class SceneObject:SceneEntity
 {
-	public override Vector3d Position { get; set; }
+	public float[] Color { get; set; }
 
-    
-    public override void Translate(Vector3d translation)
-    {
-        throw new NotImplementedException();
-    }
-
-    public override void Rotate(Vector3d rotation)
-    {
-        throw new NotImplementedException();
-    }
-
-	/// <summary>
-	/// The function calculates the intersection between the object's sphere, and the casted ray.
-	/// </summary>
-	/// <param name="Ray"></param>
-	/// <returns></returns>
-	public virtual Vector3d Intersection(Vector3d Ray)
+	public SceneObject(float[] color)
 	{
-		return Vector3d.Zero;
+		Color= color;
 	}
+	//TODO: Might be useful to define a local coordinate system for this.
 
-	/// <summary>
-	/// Set operations can be implemented between the solids
-	/// </summary>
-	public void And()
+    /// <summary>
+    /// Right now it just returns wether the ray intersects the object, or not. It it intersects it, the pixel's color the
+    /// ray is shot through should be set to the object's color.
+	/// 
+	/// Might also return the intersection points, but at first this is enough.
+    /// </summary>
+    /// <param name="Ray"></param>
+    /// <returns></returns>
+    public virtual float[] Intersection(Ray ray,Vector3d pos)
 	{
-
+		return null;
 	}
-
-	public void Or()
-	{
-
-	}
-
-	public void Subtract()
-	{
-
-	}
-
-	public void XOR()
-	{
-
-	}
-
-
-
 }
 
 
@@ -306,32 +454,64 @@ public class Sphere:SceneObject
 {
 	public float Radius;
 
-	public Sphere(float R, Vector3d Pos)
+	public Sphere(float[] color, Vector3d Pos, float R = 10) : base(color)
 	{
 		Radius = R;
 		Position = Pos;
 	}
 
-    public override Vector3d Intersection(Vector3d Ray)
-    {
-        return base.Intersection(Ray);
+	/// <summary>
+	/// Calculates whether the ray and the onject intersect each other. It is important that the ray and the 
+	/// object's data must be in the same coordinate system. Currently it will also accept a position argument.
+	/// </summary>
+	/// <param name="ray"></param>
+	/// <param name="pos">The object's position in the camera's system. </param>
+	/// <returns></returns>
+    public override float[] Intersection(Ray ray, Vector3d pos)
+	{
+		//Calculate coefficients
+		double a = Vector3d.Dot(ray.Direction,ray.Direction);
+		double b = 2 * Vector3d.Dot(ray.Direction, ray.Origin - pos);
+		double c = Vector3d.Dot(pos, pos) + Vector3d.Dot(ray.Origin, ray.Origin) - 2 * Vector3d.Dot(pos, ray.Origin) - Radius * Radius;
+
+		double discriminant = b * b - 4 * a * c;
+
+		if (discriminant > 0)
+		{
+			float t1 = (float)((-b - Math.Sqrt(discriminant)) / 2 * a);
+			float t2 = (float)((-b + Math.Sqrt(discriminant)) / 2 * a);
+			return new float[] { t1, t2 };
+		}
+		else if (discriminant == 0)
+			return new float[] { (float)(-b / 2 * a) };
+
+        return null;
     }
+}
+
+public class Box:SceneObject
+{
+	public Box(float[] color):base(color)
+	{
+
+	}
 }
 
 public class Cylinder:SceneObject
 {
 	public float Radius,Height;
 
-	public Cylinder(float Rad,float Hei,Vector3d Pos)
+	public Cylinder(float[] color,float Rad,float Hei,Vector3d Pos):base(color)
 	{
 		Radius = Rad;
 		Height = Hei;
 		Position = Pos;
 	}
 
-    public override Vector3d Intersection(Vector3d Ray)
+	
+    public override float[] Intersection(Ray ray,Vector3d pos)
     {
-        return base.Intersection(Ray);
+        return null;
     }
 
 

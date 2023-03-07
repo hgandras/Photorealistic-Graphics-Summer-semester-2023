@@ -49,3 +49,11 @@ public static class ColorTools
 
 }
 
+/// <summary>
+/// For some shortcuts like rad-deg conversion
+/// </summary>
+public class MathTools
+{
+
+}
+

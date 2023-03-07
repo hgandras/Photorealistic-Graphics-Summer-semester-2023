@@ -5,8 +5,8 @@
     "color2": "0xFFFF00"
   },
   "CameraConfig": {
-    "Position": [ 0, 0, 0 ],
-    "ViewDirection": [ 0, 0, 1 ],
+    "Position": [ 0, 0, 30 ],
+    "Target": [ 0, 0, 0 ],
     "SamplesPerPx": 1,
     "FOV": 90
   },
@@ -15,8 +15,8 @@
     "LightSourcePosition": [ 0, 10, 0 ]
   },
   "PlaneConfig": {
-    "Height": 450,
-    "Width": 600,
-    "DistanceFromCamera": 50
+    "Height": 500,
+    "Width": 500,
+    "DistanceFromCamera": 10
   }
 }
