@@ -76,5 +76,4 @@ public class PlaneConfig
 {
     public int Height { get; set; }
     public int Width { get; set; }
-    public float DistanceFromCamera { get; set; } //This property is unecessary
 }

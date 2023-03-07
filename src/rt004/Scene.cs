@@ -85,6 +85,7 @@ public class Scene
             Console.WriteLine("Not all object's properties, or too much properties are defined in config file.");
             AddObject("Sphere", new Vector3d(0, 0, 0), new float[] { 0, 0, 255 }); //Adds a sphere to the scene in that case.
         }
+		Object = Objects[0]; //Set current object to the first object added.
 			
 	}
 
@@ -132,14 +133,14 @@ public class Scene
 	}
 	
 	/// <summary>
-	/// For each pixel in the plane get as many sample points as it is defined by the camera's property
-	/// and based on the sample points, generate the ray direction vectors. After that, for all rays, calculate 
+	/// For each pixel in the plane get generate the ray direction vectors. After that, for all rays, calculate 
 	/// the intersection of all objects in the scene, and based on that the reflection, and the pixel color value
-	/// in float. This part can be parallelized.
+	/// in float. 
+	/// TODO: This part can be parallelized.
 	/// </summary>
 	/// <param name="width"></param>
 	/// <param name="height"></param>
-	public FloatImage GenerateImage()
+	public FloatImage SynthesizeImage()
 	{
 		FloatImage image = new FloatImage(Plane.PxWidth,Plane.PxHeight,3);
 
@@ -151,7 +152,7 @@ public class Scene
 			obj_positions.Add(Cam.CameraTransform(obj.Position));
 			Console.WriteLine(obj_positions[obj_positions.Count - 1]);
 		}
-		//Iterate through the pixels
+		//Iterate through the pixels 
 		for(int h=0;h<Plane.PxHeight;h++)
 		{
 			for(int w=0;w<Plane.PxWidth;w++)
@@ -182,7 +183,7 @@ public class Scene
 }
 
 /// <summary>
-/// Represents movable objects in the scene like light sources, objects, cameras. Rewrite as not an abstract class. 
+/// Represents movable objects in the scene like light sources, objects, cameras. 
 /// </summary>
 public class SceneEntity
 {
@@ -206,14 +207,19 @@ public class SceneEntity
 		pos=new float[3];
 	}
 
+	/// <summary>
+	/// Translates the object.
+	/// </summary>
+	/// <param name="Translation"></param>
     public void Translate(Vector3d Translation)
     {
-        Matrix4d translation_matrix = Matrix4d.CreateTranslation(Translation);
+		Matrix4d translation_matrix = Matrix4d.CreateTranslation(Translation);
+		translation_matrix.Transpose();
         homogeneous_pos = translation_matrix * homogeneous_pos;
     }
 
     /// <summary>
-    /// Rotates the camera around in the world's coordinate system.
+    /// Rotatation around world system X axis
     /// </summary>
     /// <param name="Rotation"></param>
     private void RotateX(Vector3d Rotation)
@@ -221,39 +227,47 @@ public class SceneEntity
         Matrix4d rotationX = Matrix4d.CreateRotationX(Rotation.X);
         homogeneous_pos = rotationX * homogeneous_pos;
     }
+    /// <summary>
+    /// Rotatation around world system Y axis
+    /// </summary>
+    /// <param name="Rotation"></param>
     public void RotateY(Vector3d Rotation)
     {
 
         Matrix4d rotationY = Matrix4d.CreateRotationY(Rotation.Y);
 		homogeneous_pos = rotationY * homogeneous_pos;
     }
+    /// <summary>
+    /// Rotatation around world system Z axis
+    /// </summary>
+    /// <param name="Rotation"></param>
     public void RotateZ(Vector3d Rotation)
     {
         Matrix4d rotationZ = Matrix4d.CreateRotationZ(Rotation.Z);
 		homogeneous_pos = rotationZ * homogeneous_pos;
     }
-
 }
 
 /// <summary>
-/// Includes the type of projection, and plane properties (width, height, and distance from the camera). 
+/// Contains plane properties, these are right now are the height/width in pixel.
 /// TODO: Decide whether the plane properties will just be part of the camera class, because most of its 
 /// parameters are projection specific.
 /// </summary>
 public class Plane
 {
-	public float DistanceFromCamera;
 	public int PxWidth;
 	public int PxHeight;
 
 	public Plane(PlaneConfig config)
 	{
-		DistanceFromCamera = config.DistanceFromCamera;
 		PxHeight = config.Height;
 		PxWidth = config.Width;
 	}
 }
 
+/// <summary>
+/// Class that represents a ray in the scene. Has an origin, direction, and intersection data(only after image was generated).
+/// </summary>
 public class Ray
 {
 	/// <summary>
@@ -262,6 +276,9 @@ public class Ray
 	/// it contains only those objects as keys, that were intersected, so there are no null values.
 	/// </summary>
 	public Dictionary<SceneObject, float[]> Intersections=new Dictionary<SceneObject, float[]>();
+	/// <summary>
+	/// Returns the first object that the ray encountered, based on the t value intervals in the Intersections property.
+	/// </summary>
 	public SceneObject? FirstIntersection { 
 		get {
 			Dictionary<SceneObject,float> first_intersection= Intersections.ToDictionary(k=>k.Key,v=>v.Value.Min());
@@ -276,9 +293,11 @@ public class Ray
 
 public class Camera : SceneEntity
 {
-	private Scene? Scene;
+	private Scene? Scene; 
 
-    public int SamplesPerPixel; //Just an idea, might be used later.
+	/// <summary>
+	/// The point the camera's -Z axis is going through.
+	/// </summary>
 	public Vector3d Target {
 		get { return new Vector3d(t[0], t[1], t[2]); }
 		set
@@ -427,7 +446,7 @@ public class PerspectiveCamera:Camera
 	{
 
 		//Calculate size of the plane, if the width is considered to be size 2.
-		//TODO: These caculations are the same for every ray, move the out of the function so it is not calculated unecessarily.
+		//TODO: These caculations are the same for every ray, move the out of the function so it is not calculated unecessarily, can be moved to Camera base constructor.
 		double w = 2;
 		double h = plane.PxHeight * (w /plane.PxWidth);
 		
@@ -445,7 +464,7 @@ public class PerspectiveCamera:Camera
 }
 
 /// <summary>
-/// Won't be implemented for a while, only if I have time.
+/// Might be implemented later.
 /// </summary>
 public class ParallelCamera :Camera
 {
@@ -459,6 +478,14 @@ public class ParallelCamera :Camera
 	{
 
 	}
+	/// <summary>
+	/// Casts perpendicular rays to the plane from the pixel.
+	/// </summary>
+	/// <param name="plane"></param>
+	/// <param name="px_x"></param>
+	/// <param name="px_y"></param>
+	/// <returns></returns>
+	/// <exception cref="NotImplementedException"></exception>
     public override Ray CastRay(Plane plane, int px_x, int px_y)
     {
         throw new NotImplementedException();
@@ -498,6 +525,12 @@ public class Sphere:SceneObject
 {
 	public float Radius;
 
+	/// <summary>
+	/// Initializes a sphere in the scene with the defined color, position, and radius.
+	/// </summary>
+	/// <param name="color"></param>
+	/// <param name="Pos"></param>
+	/// <param name="R"></param>
 	public Sphere(float[] color, Vector3d Pos, float R = 10) : base(color)
 	{
 		Radius = R;

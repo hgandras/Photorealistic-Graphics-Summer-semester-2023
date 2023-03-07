@@ -143,7 +143,9 @@ internal class Program
          * Here methods of the scene can be called (the ones that are implemented), like adding an object, pointing the camera to an added object, 
          * or simply doing any transformation with the camera. The default scene set up is defined by the config file.
          */
-        FloatImage img=scene.GenerateImage();
+        scene.SwapObject(1);
+        scene.Object.Translate(new Vector3d(0,-35,0));
+        FloatImage img=scene.SynthesizeImage();
         img.SavePFM("PathTrace.pfm");
         Console.WriteLine("HDR image is finished.");
   }
