@@ -76,8 +76,23 @@ public class Scene
 		WorldUpDirection = new Vector3d(v[0], v[1], v[2]);
 		LightSourcePosition = new Vector3d(l[0], l[1], l[2]);
 		Plane = new Plane(config.PlaneConfig);
-		AddObject(new Vector3d(0,0,0),"Sphere"); //By default adds a sphere to the scene in the origin with default parameters
-												 //so objects is not null
+		//Check if they have the same length as safety measure.
+		if(config.SceneConfig.ObjectColors.Count()==config.SceneConfig.Objects.Count() && config.SceneConfig.Objects.Count()==config.SceneConfig.ObjectPositions.Count())
+		{
+            for (int i = 0; i < config.SceneConfig.Objects.Count(); i++)
+            {
+                float[] OPs = config.SceneConfig.ObjectPositions[i];
+                Vector3d pos = new Vector3d(OPs[0], OPs[1], OPs[2]);
+                AddObject(config.SceneConfig.Objects[i], pos, config.SceneConfig.ObjectColors[i]);
+            }
+            
+		}
+		else
+		{
+            Console.WriteLine("Not all object's properties, or too much properties are defined in config file.");
+            AddObject("Sphere", new Vector3d(0, 0, 0), new float[] { 0, 0, 255 }); //Adds a sphere to the scene in that case.
+        }
+			
 	}
 
 	/// <summary>
@@ -85,13 +100,13 @@ public class Scene
 	/// </summary>
 	/// <param name="ObjPosition"></param>
 	/// <param name="shape"></param>
-	public void AddObject(Vector3d ObjPosition,string shape)
+	public void AddObject(string shape, Vector3d ObjPosition, float[] Color)
 	{
 		SceneObject new_object;
 		switch(shape)
 		{
 			case "Sphere":
-				new_object = new Sphere( new float[] { 200.0f, 0.0f, 0.0f },ObjPosition);
+				new_object = new Sphere( Color,ObjPosition);
                 Objects.Add(new_object);
                 break; 
         }

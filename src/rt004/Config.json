@@ -8,18 +8,24 @@
     "Position": [ 0, 0, 100],
     "Target": [ 0, 0, 0 ],
     "SamplesPerPx": 1,
-    "FOV": 50
+    "FOV": 90
   },
   "SceneConfig": {
     "WorldUpDirection": [ 0, 1, 0 ],
     "LightSourcePosition": [ 0, 10, 0 ],
-    "Objects": [ "Sphere" ],
-    "ObjectColors": [ "0x0000FF" ],
-    "ObjectPositions": [ [0,0,0] ]
+    "Objects": [ "Sphere" ,"Sphere"],
+    "ObjectColors": [
+      [ 0, 255, 0 ],
+      [0,0,255]
+    ],
+    "ObjectPositions": [
+      [ 0, 0, 0 ],
+      [0,40,0]
+    ]
   },
   "PlaneConfig": {
-    "Height": 450,
-    "Width": 600,
+    "Height": 1000,
+    "Width": 1200,
     "DistanceFromCamera": 10
   }
 }

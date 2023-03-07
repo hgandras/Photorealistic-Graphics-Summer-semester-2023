@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using OpenTK.Mathematics;
 
 namespace rt004;
 
@@ -66,6 +67,9 @@ public class SceneConfig
 {
     public float[] WorldUpDirection { get; set; }
     public float[] LightSourcePosition { get; set; }
+    public List<string> Objects { get; set; }
+    public List<float[]> ObjectColors { get; set; }
+    public List<float[]> ObjectPositions { get; set; }
 
 }
 
