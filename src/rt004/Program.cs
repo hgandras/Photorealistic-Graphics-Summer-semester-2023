@@ -137,7 +137,12 @@ internal class Program
             fi.SavePFM(fileName+".pfm");
         }
 
+        //Create scene, and generate the image;
         Scene scene = new Scene(config);
+        /* 
+         * Here methods of the scene can be called (the ones that are implemented), like adding an object, pointing the camera to an added object, 
+         * or simply doing any transformation with the camera. The default scene set up is defined by the config file.
+         */
         FloatImage img=scene.GenerateImage();
         img.SavePFM("PathTrace.pfm");
         Console.WriteLine("HDR image is finished.");

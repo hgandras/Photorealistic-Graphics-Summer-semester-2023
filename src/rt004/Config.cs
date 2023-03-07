@@ -59,7 +59,6 @@ public class CameraConfig
 {
     public float[] Position { get; set; }
     public float[] Target { get; set; }
-    public int SamplesPerPx { get; set; }
     public float FOV { get; set; }
 }
 

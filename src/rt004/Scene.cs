@@ -15,23 +15,16 @@ namespace rt004;
 /// and a current object, and you can switch between them. Operations can only be done on the current ones.
 /// 
 /// During projection, everything is going to be calculated in the camera's coordinate system, so objects and light
-/// source coordinates all will have to be transformed.
+/// source coordinates all will be transformed during ray calulations.
 /// </summary>
 
 /*
  * TODO: Create empty camera type constructors
  * 
- * TODO: Init value of the Object variable, so its not null upon exiting the Scene constructor
- * 
- * TODO: When we add a camera to the Scene, it should be bounded, and the camera should have the world up vector as its field, so
+ * COMMENT: When we add a camera to the Scene, it should be bounded, and the camera should have the world up vector as its field, so
  * the X,Y,Z basis vectors in world coordinates can be accessed as a property. A camera can also be removed, so its world up Vector3d 
  * can be set to null. Or a camera just simply has the scene it is contained in as a field, so it can acces its properties.
  * 
- * TODO: Add a dictionary to the Ray class, which contains the Object as key, and the intersection points as 
- *		 the value. This way set operations on objects might be easier to implement later, and more complex 
- *		 objects can be created.
- *	
- * TODO: Create config file, such that the onbjects can also be defined. Should be part of SceneConfig.
  */
 
 public class Scene
@@ -61,7 +54,7 @@ public class Scene
 	}
 
 	/// <summary>
-	/// Set up basic properties of the scene, like Initialize the camera from the config file.
+	/// Constructor for the scene, sets it up based on the config file.
 	/// </summary>
 	public Scene(Config config)
 	{ 
@@ -98,8 +91,8 @@ public class Scene
 	/// <summary>
 	/// Adds an object with the default parameters provided in the object type's class definition.
 	/// </summary>
-	/// <param name="ObjPosition"></param>
-	/// <param name="shape"></param>
+	/// <param name="ObjPosition">The position of the object</param>
+	/// <param name="shape">String that represents the object type. Possible values: Sphere</param>
 	public void AddObject(string shape, Vector3d ObjPosition, float[] Color)
 	{
 		SceneObject new_object;
@@ -112,23 +105,34 @@ public class Scene
         }
     }
 
+	/// <summary>
+	///TODO: Not yet implemnted, because I think I want an ID system for the objects.
+	/// </summary>
 	public void RemoveObject()
 	{
 		
 	}
 
+	/// <summary>
+	/// Changes between the cameras.
+	/// </summary>
+	/// <param name="cam_ID"></param>
 	public void SwapCamera(int cam_ID)
 	{
 		Cam = Cameras[cam_ID];
 	}
 
+	/// <summary>
+	/// Changes the object.
+	/// </summary>
+	/// <param name="obj_ID"></param>
 	public void SwapObject(int obj_ID)
 	{
 		Object = Objects[obj_ID];
 	}
 	
 	/// <summary>
-	/// For each pixel in the plane get as many sample points as it is defined by the camera's property,
+	/// For each pixel in the plane get as many sample points as it is defined by the camera's property
 	/// and based on the sample points, generate the ray direction vectors. After that, for all rays, calculate 
 	/// the intersection of all objects in the scene, and based on that the reflection, and the pixel color value
 	/// in float. This part can be parallelized.
@@ -291,7 +295,6 @@ public class Camera : SceneEntity
 		t = config.Target;
 		pos = config.Position;
 		homogeneous_pos = new Vector4d(pos[0], pos[1], pos[2], 1);
-		SamplesPerPixel = config.SamplesPerPx;
 	}
 
 	public Camera(CameraConfig config,Scene scene):this(config)
@@ -423,14 +426,14 @@ public class PerspectiveCamera:Camera
 	public override Ray CastRay(Plane plane, int px_x, int px_y)
 	{
 
-		//Calculate size of the plane, if the width is considered to be size 2
+		//Calculate size of the plane, if the width is considered to be size 2.
+		//TODO: These caculations are the same for every ray, move the out of the function so it is not calculated unecessarily.
 		double w = 2;
 		double h = plane.PxHeight * (w /plane.PxWidth);
 		
 		double w_pixel_step = w / plane.PxWidth;
 		double h_pixel_step=h/plane.PxHeight;
-		
-
+	
         double x = px_x * w_pixel_step + w_pixel_step / 2 - w / 2;
 		double y = px_y * h_pixel_step + h_pixel_step / 2 - h / 2;
 		//The intersected point in the plane in the camera system

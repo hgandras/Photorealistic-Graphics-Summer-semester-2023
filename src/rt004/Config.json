@@ -7,7 +7,6 @@
   "CameraConfig": {
     "Position": [ 0, 0, 100],
     "Target": [ 0, 0, 0 ],
-    "SamplesPerPx": 1,
     "FOV": 90
   },
   "SceneConfig": {

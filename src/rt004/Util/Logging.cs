@@ -17,7 +17,7 @@ internal class Logging
     /// </summary>
     public Logging()
     {
-       
+    
     }
     public static void InvalidArgument(string arg_name="Default")
     {
