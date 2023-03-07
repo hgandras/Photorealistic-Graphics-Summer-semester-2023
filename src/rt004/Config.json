@@ -5,18 +5,21 @@
     "color2": "0xFFFF00"
   },
   "CameraConfig": {
-    "Position": [ 0, 0, 30 ],
+    "Position": [ 0, 0, 100],
     "Target": [ 0, 0, 0 ],
     "SamplesPerPx": 1,
-    "FOV": 90
+    "FOV": 50
   },
   "SceneConfig": {
     "WorldUpDirection": [ 0, 1, 0 ],
-    "LightSourcePosition": [ 0, 10, 0 ]
+    "LightSourcePosition": [ 0, 10, 0 ],
+    "Objects": [ "Sphere" ],
+    "ObjectColors": [ "0x0000FF" ],
+    "ObjectPositions": [ [0,0,0] ]
   },
   "PlaneConfig": {
-    "Height": 500,
-    "Width": 500,
+    "Height": 450,
+    "Width": 600,
     "DistanceFromCamera": 10
   }
 }

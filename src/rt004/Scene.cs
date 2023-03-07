@@ -30,6 +30,8 @@ namespace rt004;
  * TODO: Add a dictionary to the Ray class, which contains the Object as key, and the intersection points as 
  *		 the value. This way set operations on objects might be easier to implement later, and more complex 
  *		 objects can be created.
+ *	
+ * TODO: Create config file, such that the onbjects can also be defined. Should be part of SceneConfig.
  */
 
 public class Scene
@@ -127,11 +129,9 @@ public class Scene
         List<Vector3d> obj_positions = new List<Vector3d>();
 		foreach (SceneObject obj in Objects)
 		{
-			obj_positions.Add(Cam.LookAt(obj,Cam.Position)); 
+			obj_positions.Add(Cam.CameraTransform(obj.Position));
+			Console.WriteLine(obj_positions[obj_positions.Count - 1]);
 		}
-        Console.WriteLine(Cam.Position);
-        Console.WriteLine(Objects[0].Position);
-		Console.WriteLine(obj_positions[0]);
 		//Iterate through the pixels
 		for(int h=0;h<Plane.PxHeight;h++)
 		{
@@ -139,19 +139,24 @@ public class Scene
 			{
 				//Cast the rays for each h,w pixel
 				Ray ray=Cam.CastRay(Plane, w, h);
+				
 				for(int i=0;i<Objects.Count();i++)
 				{
 					//If the ray intersects the object, set pixel color value to the object's value, else black.
 					float[]? intersections = Objects[i].Intersection(ray, obj_positions[i]);
-
-                    if(intersections==null)
-                        image.PutPixel(w, h, 0);
-                    else if(intersections.Count()>=1)
+					if (intersections != null)
 					{
-						image.PutPixel(w, h, Objects[i].Color);
+                        ray.Intersections.Add(Objects[i], intersections);
 					}
 				}
-			}
+				SceneObject? sO = ray.FirstIntersection;
+				if (sO == null)
+					image.PutPixel(w, h, new float[] { 0, 0, 0 });
+				else
+				{
+					image.PutPixel(w, h, ray.FirstIntersection.Color);
+				}
+            }
 		}
 		return image;
 	}
@@ -232,6 +237,18 @@ public class Plane
 
 public class Ray
 {
+	/// <summary>
+	/// Used when the intersection function is called. It stores the intersections of each 
+	/// encountered object, and based on this it creates the image. After the image is generated, 
+	/// it contains only those objects as keys, that were intersected, so there are no null values.
+	/// </summary>
+	public Dictionary<SceneObject, float[]> Intersections=new Dictionary<SceneObject, float[]>();
+	public SceneObject? FirstIntersection { 
+		get {
+			Dictionary<SceneObject,float> first_intersection= Intersections.ToDictionary(k=>k.Key,v=>v.Value.Min());
+			SceneObject? fi =first_intersection.Values.Count()==0 ? null: first_intersection.MinBy(kvp => kvp.Value).Key;
+			return fi; 
+			} }
 	public Vector3d Origin { get; set; }
 	public Vector3d Direction { get; set; }
 }
@@ -311,28 +328,31 @@ public class Camera : SceneEntity
 	}
 
 	/// <summary>
+	/// Returns the coordinates of a point in the camera system.
+	/// </summary>
+	/// <param name="point">Coordinates of a point in world system.</param>
+	/// <returns></returns>
+	public Vector3d CameraTransform(Vector3d point)
+	{
+        Matrix4d camSystem = new Matrix4d(new Vector4d(CamX, 0), new Vector4d(CamY, 0), new Vector4d(CamZ, 0), new Vector4d(0, 0, 0, 1));
+        Matrix4d translation = Matrix4d.CreateTranslation(-Position);
+        translation.Transpose(); //OpenTK puts the translation to the last ROW, not the last column ???
+
+        Vector4d lookat_cam_system = new Vector4d(point, 1);
+
+        return (camSystem * translation * lookat_cam_system).Xyz;
+    }
+
+	/// <summary>
 	/// Sets the camera to look at the specified point, and transforms that point's position to 
-	/// the camera's coordinate system.
+	/// the camera's coordinate system, and returns it(I)
 	/// </summary>
 	/// <param name="target">The object to be transformed in world coordinates</param>
 	/// <param name="cam_position">The position of the camera in the world system</param>
-	public Vector3d LookAt(Vector3d target,Vector3d cam_position)
+	public Vector3d LookAt(Vector3d target)
 	{
-		//TODO: Rework this
 		Target=target;
-		Position = cam_position;
-		Console.WriteLine("Camera Position: "+Position);
-		Console.WriteLine("Target position: "+Target);
-		Vector4d TargetInCameraSystem = new Vector4d();
-		Matrix4d camSystem = new Matrix4d(new Vector4d(CamX,0), new Vector4d(CamY, 0), new Vector4d(CamZ, 0), new Vector4d(0, 0, 0, 1));
-		Matrix4d translation = Matrix4d.CreateTranslation(-Position);
-		translation.Transpose(); //OpenTK puts the translation to the last ROW, not the last column ???
-		
-		Vector4d lookat_cam_system = new Vector4d(Target,1);
-		Vector4d translated = translation * lookat_cam_system;
-		TargetInCameraSystem = camSystem *translated;
-
-		return TargetInCameraSystem.Xyz;
+		return CameraTransform(target);
 	}
 
     /// <summary>
@@ -340,9 +360,9 @@ public class Camera : SceneEntity
     /// the camera's coordinate system.
     /// </summary>
     /// <param name="obj"></param>
-    public Vector3d LookAt(SceneObject obj,Vector3d cam_position)
+    public Vector3d LookAt(SceneObject obj)
 	{
-		return LookAt(obj.Position,cam_position);
+		return LookAt(obj.Position);
 	}
 
     /// <summary>
