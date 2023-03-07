@@ -138,8 +138,6 @@ internal class Program
         }
 
         Scene scene = new Scene(config);
-       // scene.AddObject(new Vector3d(0, 40, 0), "Sphere");
-       // scene.AddObject(new Vector3d(40,0,-40), "Sphere");
         FloatImage img=scene.GenerateImage();
         img.SavePFM("PathTrace.pfm");
         Console.WriteLine("HDR image is finished.");

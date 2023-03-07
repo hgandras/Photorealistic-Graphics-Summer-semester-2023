@@ -39,7 +39,7 @@ public class Scene
 	public Vector3d LightSourcePosition;
 	public Vector3d WorldUpDirection;
 	public Camera Cam;
-	public Object Object;
+	public SceneObject Object;
 	public Plane Plane;
 
 	public int ObjectCount { get { return Objects.Count(); } }
@@ -114,7 +114,7 @@ public class Scene
 
 	public void RemoveObject()
 	{
-
+		
 	}
 
 	public void SwapCamera(int cam_ID)
@@ -368,6 +368,12 @@ public class Camera : SceneEntity
 	{
 		Target=target;
 		return CameraTransform(target);
+	}
+
+	public Vector3d LookAt(int objID)
+	{
+		Scene.SwapObject(objID);
+		return LookAt(Scene.Object.Position);
 	}
 
     /// <summary>
