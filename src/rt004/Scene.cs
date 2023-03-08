@@ -85,8 +85,7 @@ public class Scene
             Console.WriteLine("Not all object's properties, or too much properties are defined in config file.");
             AddObject("Sphere", new Vector3d(0, 0, 0), new float[] { 0, 0, 255 }); //Adds a sphere to the scene in that case.
         }
-		Object = Objects[0]; //Set current object to the first object added.
-			
+		Object = Objects[0]; //Set current object to the first object added.	
 	}
 
 	/// <summary>
@@ -159,7 +158,6 @@ public class Scene
 			{
 				//Cast the rays for each h,w pixel
 				Ray ray=Cam.CastRay(Plane, w, h);
-				
 				for(int i=0;i<Objects.Count();i++)
 				{
 					//If the ray intersects the object, set pixel color value to the object's value, else black.
@@ -183,7 +181,7 @@ public class Scene
 }
 
 /// <summary>
-/// Represents movable objects in the scene like light sources, objects, cameras. 
+/// Represents movable objects in the scene like objects, cameras. Light sources do not inherit from this class, since they behave slightly differently.
 /// </summary>
 public class SceneEntity
 {
@@ -233,7 +231,6 @@ public class SceneEntity
     /// <param name="Rotation"></param>
     public void RotateY(Vector3d Rotation)
     {
-
         Matrix4d rotationY = Matrix4d.CreateRotationY(Rotation.Y);
 		homogeneous_pos = rotationY * homogeneous_pos;
     }
@@ -285,15 +282,31 @@ public class Ray
 			SceneObject? fi =first_intersection.Values.Count()==0 ? null: first_intersection.MinBy(kvp => kvp.Value).Key;
 			return fi; 
 			} }
-	public Vector3d Origin { get; set; }
-	public Vector3d Direction { get; set; }
+	public Vector3d Origin;
+	public Vector3d Direction;
+
+	/// <summary>
+	/// Origing, and direction. The constructor normalizes them before assigning it to its fields.
+	/// </summary>
+	/// <param name="origin"></param>
+	/// <param name="direction"></param>
+	public Ray(Vector3d origin, Vector3d direction)
+	{
+		
+		Origin =origin==Vector3d.Zero? origin:Vector3d.Normalize(origin);
+		Direction = direction==Vector3d.Zero?direction:Vector3d.Normalize(direction);
+	}
 }
 
 
 
 public class Camera : SceneEntity
 {
-	private Scene? Scene; 
+	private Scene? Scene;
+
+	//TODO: Angle getters.
+	public float ElevationAngle{get;set;}
+	public float AzimuthAngle { get; set; }
 
 	/// <summary>
 	/// The point the camera's -Z axis is going through.
@@ -418,7 +431,7 @@ public class Camera : SceneEntity
 	}
 	public virtual Ray CastRay(Plane plane, int px_x, int px_y)
 	{
-		return new Ray();
+		return new Ray(new Vector3d(),new Vector3d());
 	}
 }
 
@@ -459,7 +472,7 @@ public class PerspectiveCamera:Camera
 		double z = (w / 2f) / Math.Tan(FOV / 360f * Math.PI);
         Vector3d intersection_point =new Vector3d(x,-y,-z);
 		
-		return new Ray{ Origin=Vector3d.Zero,Direction=Vector3d.Normalize(intersection_point) };
+		return new Ray( Vector3d.Zero,Vector3d.Normalize(intersection_point));
 	}
 }
 
@@ -564,6 +577,12 @@ public class Sphere:SceneObject
 
         return null;
     }
+
+	public Vector3d SurfaceNormal(Vector3d point)
+	{
+		return Vector3d.Normalize(Position - point);
+	}
+
 }
 
 public class Box:SceneObject
@@ -591,5 +610,38 @@ public class Cylinder:SceneObject
         return null;
     }
 
+
+}
+
+/// <summary>
+/// In case something lighting sepcific comes to my mind. Light 
+/// </summary>
+public interface LightSource
+{
+
+}
+
+public class PointLight:LightSource
+{
+	Vector3d Position;
+	
+	public PointLight(Vector3d position)
+	{
+		Position = position;
+	}
+
+	/// <summary>
+	/// Calculates the 
+	/// </summary>
+	/// <param name="point"></param>
+	/// <returns></returns>
+	public Ray GetRay(Vector3d point)
+	{
+		return new Ray(Position,point-Position);
+    }
+}
+
+public class DirectionalLight:LightSource
+{
 
 }

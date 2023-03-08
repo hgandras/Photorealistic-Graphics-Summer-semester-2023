@@ -5,7 +5,7 @@
     "color2": "0xFFFF00"
   },
   "CameraConfig": {
-    "Position": [ 0, 0, 100],
+    "Position": [ 0, 0, 50],
     "Target": [ 0, 0, 0 ],
     "FOV": 90
   },
