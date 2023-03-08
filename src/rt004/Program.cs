@@ -5,6 +5,8 @@ using System.Drawing;
 using System.Globalization;
 using System.Text.Json;
 using OpenTK.Mathematics;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Configuration;
 //using System.Numerics;
 
 namespace rt004;
@@ -15,11 +17,15 @@ internal class Program
 
   static void Main(string[] args)
   {
+
+        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole(options => { options.TimestampFormat = "[HH:mm:ss] "; }).AddDebug().SetMinimumLevel(LogLevel.Debug));
+        var logger = loggerFactory.CreateLogger<Program>();
         // Parameters.
         //Default parameters are specified in the config file, and the command-line arguments 
         //can overwrite them.
         Config config=new Config("Config.json");
         GeneralConfig generalConfig = config.GeneralConfig;
+        logger.LogInformation("Config file loaded");
 
         int wid = config.PlaneConfig.Width;
         int hei = config.PlaneConfig.Height;
@@ -43,14 +49,14 @@ internal class Program
                     case "width":
                         if(!int.TryParse(value, out wid))
                         {
-                            Logging.InvalidArgument(key);
+                            logger.LogWarning("Invalid value argument for {}", key);
                             wid = 600;
                         }
                         break;
                     case "height":
                         if(!int.TryParse(value, out hei))
                         {
-                            Logging.InvalidArgument(key);
+                            logger.LogWarning("Invalid value argument for {}", key);
                             hei = 450;
                         }
                         break;
@@ -58,7 +64,7 @@ internal class Program
                     case "color1":
                         if (!UInt32.TryParse(value, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out uint c1))
                         {
-                            Logging.InvalidArgument(key);
+                            logger.LogWarning("Invalid value argument for {}", key);
                             color1 = Color.FromArgb(255, 255, 255);
                         }
                         else
@@ -71,7 +77,7 @@ internal class Program
                         if (!UInt32.TryParse(value, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out uint c2))
                         {
 
-                            Logging.InvalidArgument(key);
+                            logger.LogWarning("Invalid value argument for {}", key);
                             color2 = Color.FromArgb(0, 255, 0);
                             break;
                         }
@@ -88,7 +94,7 @@ internal class Program
             }
             else
             {
-                Logging.InvalidArgument();              
+                logger.LogWarning("Invalid argument format {}", key_val[0]);  
             }
         }
 
@@ -135,7 +141,7 @@ internal class Program
         {
             fi.SavePFM(fileName+".pfm");
         }
-
+        logger.LogInformation("Demo HDR image created");
         //Create scene, and generate the image;
         Scene scene = new Scene(config);
         /* 
@@ -146,6 +152,6 @@ internal class Program
         //scene.Object.Translate(new Vector3d(0,-35,0));
         FloatImage img=scene.SynthesizeImage();
         img.SavePFM("PathTrace.pfm");
-        Console.WriteLine("HDR image is finished.");
+        logger.LogInformation("Path traced image created");
   }
 }

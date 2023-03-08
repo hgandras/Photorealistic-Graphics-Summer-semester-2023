@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Numerics;
 using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Logging;
 using OpenTK.Mathematics;
 using Util;
 
@@ -40,6 +41,7 @@ public class Scene
     public int PlaneHeightPx;
     public int ObjectCount { get { return Objects.Count(); } }
     public int CamCount { get { return Cameras.Count(); } }
+	public int LightSourceCount { get { return LightSources.Count(); } }
 
     //Current scene entities
     public LightSource LightSource;
@@ -50,6 +52,7 @@ public class Scene
 	private List<SceneObject> Objects;
 	private List<Camera> Cameras;
 	private List<LightSource> LightSources;
+    private ILogger logger;
 
 	/// <summary>
 	/// Empty constructor, so Scene can be initialized without config.
@@ -65,8 +68,9 @@ public class Scene
 	/// Constructor for the scene, sets it up based on the config file.
 	/// </summary>
 	public Scene(Config config)
-	{ 
-
+	{
+		var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().AddDebug().SetMinimumLevel(LogLevel.Debug));
+		logger = loggerFactory.CreateLogger<Scene>();
 		//Initializing some properties
 		Objects= new List<SceneObject>();
 		LightSources = new List<LightSource>();
@@ -102,12 +106,12 @@ public class Scene
                 new_light.Direction = ColorTools.ArrToV3d(config.SceneConfig.DirectionalLightDirections[i]);
                 LightSources.Add(new_light);
             }
-			Console.WriteLine("Scene Initialized");
+			logger.LogInformation("Scene initialized with {} objects, and {} light sources", ObjectCount,LightSourceCount);
         }
 		catch(IndexOutOfRangeException)
 		{
 			//TODO: If not all positions, colors are specified in the config file, then initialize the leftover scene entities with default parameters
-			Console.WriteLine("Not all scene objects defined in config file has properties, exiting.");
+			logger.LogWarning("Some scene object's properties were not defined, some SceneEnities are added with default parameters");
 			Environment.Exit(1);
 		}
 		
@@ -199,7 +203,6 @@ public class Scene
 		foreach (SceneObject obj in Objects)
 		{
 			obj_positions.Add(Cam.CameraTransform(obj.Position));
-			Console.WriteLine(obj_positions[obj_positions.Count - 1]);
 		}
 		//Iterate through the pixels 
 		for(int h=0;h<Plane.PxHeight;h++)
@@ -223,12 +226,10 @@ public class Scene
 				else
 				{
                     //Transform ray to world coordinates
-                    //Console.WriteLine(ray.Origin + " " + " " + ray.Direction + " " + Cam.Position);
                     ray.Origin = Cam.Position;
 
 					//Normalize is probebly unnecessary, because ray direction vectors are normalized in previous calculations.
                     ray.Direction = Vector3d.Normalize((Matrix4d.Invert(Cam.CameraTransformMatrix)*new Vector4d(ray.Direction,1)).Xyz-ray.Origin);
-					//Console.WriteLine(ray.Origin+" "+" "+ray.Direction+" "+Cam.Position);
 
 					Vector3d pixel_color = sO.Material.GetReflectedColor(ray, AmbientLighting, LightSources[0], LightSources[1]);
 					float[] fin_color = ColorTools.V3dToArr(pixel_color/256);
@@ -433,6 +434,7 @@ public class Camera : SceneEntity
 			}
 			else
 			{
+				
 				Console.WriteLine("WARNING: Scene is not set for camera.");//Create logging for this 
 				return new Matrix3d();
 			}
