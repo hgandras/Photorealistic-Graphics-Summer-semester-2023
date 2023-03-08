@@ -29,25 +29,28 @@ namespace rt004;
 
 public class Scene
 {
+	//Some scene properties
 	public Vector3d WorldUpDirection;
-	public Camera Cam;
-	public SceneObject Object;
-	public Plane Plane;
+    public Vector3d AmbientLighting;
+    public Plane Plane;
+    public int PlaneWidthPx;
+    public int PlaneHeightPx;
+    public int ObjectCount { get { return Objects.Count(); } }
+    public int CamCount { get { return Cameras.Count(); } }
 
-	public LightSource LightSource;
-	public Vector3d AmbientLighting;
+    //Current scene entities
+    public LightSource LightSource;
+    public Camera Cam;
+    public SceneObject Object;
 
-	public int ObjectCount { get { return Objects.Count(); } }
-	public int CamCount { get { return Cameras.Count(); } }
-	public int PlaneWidthPx;
-	public int PlaneHeightPx;
-
-
+	//Private lists for storin all scene entities
 	private List<SceneObject> Objects;
 	private List<Camera> Cameras;
+	private List<LightSource> LightSources;
 
 	/// <summary>
 	/// Empty constructor, so Scene can be initialized without config.
+	/// TODO: Either implement this, or delete.
 	/// </summary>
 	public Scene()
 	{
@@ -60,7 +63,9 @@ public class Scene
 	/// </summary>
 	public Scene(Config config)
 	{ 
+		//TODO: Make this a bit more readable
 		Objects= new List<SceneObject>();
+		LightSources = new List<LightSource>();
         Cameras = new List<Camera>
 		{
 			new PerspectiveCamera(config.CameraConfig,this)
@@ -69,7 +74,10 @@ public class Scene
         float[] v = config.SceneConfig.WorldUpDirection;
 		float[] l = config.SceneConfig.LightSourcePosition;
 		WorldUpDirection = new Vector3d(v[0], v[1], v[2]);
-		LightSource = new PointLight(new Vector3d(20,200,20),new Vector3d(1,1,1),new Vector3d(1,1,1));
+		//TODO: Remove when adding light sources to config file.
+		LightSources.Add(new PointLight(new Vector3d(20, 200, 20), new Vector3d(1, 1, 1), new Vector3d(1, 1, 1)));
+        LightSources.Add(new PointLight(new Vector3d(-20, -200, -20), new Vector3d(1, 1, 1), new Vector3d(1, 1, 1)));
+        LightSource = LightSources[0];
 		AmbientLighting = new Vector3d(1, 1, 1);
 		Plane = new Plane(config.PlaneConfig);
 		//Check if they have the same length as safety measure.
@@ -181,7 +189,7 @@ public class Scene
                     ray.Direction = Vector3d.Normalize((Matrix4d.Invert(Cam.CameraTransformMatrix)*new Vector4d(ray.Direction,1)).Xyz-ray.Origin);
 					//Console.WriteLine(ray.Origin+" "+" "+ray.Direction+" "+Cam.Position);
 
-					Vector3d pixel_color = sO.Material.GetReflectedColor(ray, AmbientLighting, LightSource);
+					Vector3d pixel_color = sO.Material.GetReflectedColor(ray, AmbientLighting, LightSources[0], LightSources[1]);
 					float[] fin_color = ColorTools.V3dToArr(pixel_color/256);
 					image.PutPixel(w,h,fin_color);
 				}
