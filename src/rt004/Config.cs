@@ -65,10 +65,13 @@ public class CameraConfig
 public class SceneConfig
 {
     public float[] WorldUpDirection { get; set; }
-    public float[] LightSourcePosition { get; set; }
     public List<string> Objects { get; set; }
     public List<float[]> ObjectColors { get; set; }
     public List<float[]> ObjectPositions { get; set; }
+    public List<float[]> PointLightPositions { get; set; }
+
+    public List<float[]> DirectionalLightDirections { get; set; }
+    public float[] AmbientLighting { get; set; }
 
 }
 

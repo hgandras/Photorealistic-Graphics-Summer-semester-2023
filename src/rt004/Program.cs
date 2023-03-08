@@ -111,7 +111,7 @@ internal class Program
                     fi.PutPixel(w, h, new float[3] { color_rgb.R, color_rgb.G, color_rgb.B });
                 }
                 else
-                    fi.PutPixel(w, h, new float[3] { 1f, 1f, 1f });              
+                    fi.PutPixel(w, h, new float[3] { 255f, 255f, 255f });              
           }
         }
 

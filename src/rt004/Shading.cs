@@ -53,7 +53,6 @@ public class Phong:Material
             Vector3d incoming_light_direction = light.GetRay(intersection_point).Direction;
             Vector3d refleced_light_direction = 2 * Vector3d.Dot(incoming_light_direction, surface_normal) * surface_normal - incoming_light_direction;
 
-
             Vector3d diffuse_component = k_d * Math.Max(Vector3d.Dot(incoming_light_direction, surface_normal), 0.0) * light.DiffuseLighting;
             Vector3d specular_component = k_s * Math.Pow(Math.Max(Vector3d.Dot(refleced_light_direction, view_direction), 0.0), alpha) * light.SpecularLighting;
 

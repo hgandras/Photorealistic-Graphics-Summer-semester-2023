@@ -25,6 +25,9 @@ namespace rt004;
  * the X,Y,Z basis vectors in world coordinates can be accessed as a property. A camera can also be removed, so its world up Vector3d 
  * can be set to null. Or a camera just simply has the scene it is contained in as a field, so it can acces its properties.
  * 
+ * TODO: Modify config file, so light sources can be added from it
+ * 
+ * TODO: Implement other shapes, light source, and camera types if I have time. Maybe implement another shading method.
  */
 
 public class Scene
@@ -63,39 +66,51 @@ public class Scene
 	/// </summary>
 	public Scene(Config config)
 	{ 
-		//TODO: Make this a bit more readable
+
+		//Initializing some properties
 		Objects= new List<SceneObject>();
 		LightSources = new List<LightSource>();
-        Cameras = new List<Camera>
+        Cameras = new List<Camera> //Add perspective camera by default
 		{
 			new PerspectiveCamera(config.CameraConfig,this)
 		};
         Cam = Cameras[0];
-        float[] v = config.SceneConfig.WorldUpDirection;
-		float[] l = config.SceneConfig.LightSourcePosition;
-		WorldUpDirection = new Vector3d(v[0], v[1], v[2]);
-		//TODO: Remove when adding light sources to config file.
-		LightSources.Add(new PointLight(new Vector3d(20, 200, 20), new Vector3d(1, 1, 1), new Vector3d(1, 1, 1)));
-        LightSources.Add(new PointLight(new Vector3d(-20, -200, -20), new Vector3d(1, 1, 1), new Vector3d(1, 1, 1)));
-        LightSource = LightSources[0];
-		AmbientLighting = new Vector3d(1, 1, 1);
+		WorldUpDirection = ColorTools.ArrToV3d(config.SceneConfig.WorldUpDirection); 
+		AmbientLighting =ColorTools.ArrToV3d(config.SceneConfig.AmbientLighting);
 		Plane = new Plane(config.PlaneConfig);
-		//Check if they have the same length as safety measure.
-		if(config.SceneConfig.ObjectColors.Count()==config.SceneConfig.Objects.Count() && config.SceneConfig.Objects.Count()==config.SceneConfig.ObjectPositions.Count())
+
+		//Add scene elements based on properties
+		try
 		{
-            for (int i = 0; i < config.SceneConfig.Objects.Count(); i++)
+			for(int i=0;i<config.SceneConfig.Objects.Count();i++)
+			{
+				AddObject(config.SceneConfig.Objects[i]);
+				Object = Objects[i];
+				Object.Position =ColorTools.ArrToV3d( config.SceneConfig.ObjectPositions[i]);
+				Object.Color = ColorTools.ArrToV3d(config.SceneConfig.ObjectColors[i]);
+				Object.Material = new Phong(0.2f,0.8f,0.2f,150); //TODO: This should be added to config file.
+			}
+			for(int i=0;i<config.SceneConfig.PointLightPositions.Count();i++)
+			{
+				PointLight new_light=new PointLight();
+				new_light.Position = ColorTools.ArrToV3d(config.SceneConfig.PointLightPositions[i]);
+				LightSources.Add(new_light);
+			}
+            for (int i = 0; i < config.SceneConfig.DirectionalLightDirections.Count(); i++)
             {
-                float[] OPs = config.SceneConfig.ObjectPositions[i];
-                Vector3d pos = new Vector3d(OPs[0], OPs[1], OPs[2]);
-                AddObject(config.SceneConfig.Objects[i], pos, ColorTools.ArrToV3d(config.SceneConfig.ObjectColors[i]));
+                DirectionalLight new_light = new DirectionalLight();
+                new_light.Direction = ColorTools.ArrToV3d(config.SceneConfig.DirectionalLightDirections[i]);
+                LightSources.Add(new_light);
             }
-		}
-		else
-		{
-            Console.WriteLine("Not all object's properties, or too much properties are defined in config file.");
-            AddObject("Sphere", new Vector3d(0, 0, 0), new Vector3d( 0, 0, 255 )); //Adds a sphere to the scene in that case.
+			Console.WriteLine("Scene Initialized");
         }
-		Object = Objects[0]; //Set current object to the first object added.	
+		catch(IndexOutOfRangeException)
+		{
+			//TODO: If not all positions, colors are specified in the config file, then initialize the leftover scene entities with default parameters
+			Console.WriteLine("Not all scene objects defined in config file has properties, exiting.");
+			Environment.Exit(1);
+		}
+		
 	}
 
 	/// <summary>
@@ -103,20 +118,42 @@ public class Scene
 	/// </summary>
 	/// <param name="ObjPosition">The position of the object</param>
 	/// <param name="shape">String that represents the object type. Possible values: Sphere</param>
-	public void AddObject(string shape, Vector3d ObjPosition, Vector3d Color)
+	public void AddObject(string shape)
 	{
 		SceneObject new_object;
 		switch(shape)
 		{
 			case "Sphere":
-				new_object = new Sphere( Color,ObjPosition,new Phong(0.5f,0.8f,0.2f,80),20);
+				new_object = new Sphere();
                 Objects.Add(new_object);
-                break; 
+                break;
+
+			case "Box":
+				new_object = new Box();
+				Objects.Add(new_object);
+				break;	
         }
     }
 
+	public void AddLightSource(string type)
+	{
+		LightSource new_light_source;
+		switch(type)
+		{
+			case "Point":
+				new_light_source = new PointLight();
+				LightSources.Add(new_light_source);
+				break;
+
+			case "Directional":
+                new_light_source = new DirectionalLight();
+                LightSources.Add(new_light_source);
+                break;
+        }
+	}
+
 	/// <summary>
-	///TODO: Not yet implemnted, because I think I want an ID system for the objects.
+	///TODO: Not yet implemnted, because I think I want an ID system for the objects, lightsources, and cameras.
 	/// </summary>
 	public void RemoveObject()
 	{
@@ -140,7 +177,11 @@ public class Scene
 	{
 		Object = Objects[obj_ID];
 	}
-	
+
+	public void SwapLightSource(int ls_ID)
+	{
+		LightSource = LightSources[ls_ID];
+	}	
 	/// <summary>
 	/// For each pixel in the plane get generate the ray direction vectors. After that, for all rays, calculate 
 	/// the intersection of all objects in the scene, and based on that the reflection, and the pixel color value
@@ -513,7 +554,6 @@ public class PerspectiveCamera:Camera
 	/// <exception cref="NotImplementedException"></exception>
 	public override Ray CastRay(Plane plane, int px_x, int px_y)
 	{
-
 		//Calculate size of the plane, if the width is considered to be size 2.
 		//TODO: These caculations are the same for every ray, move the out of the function so it is not calculated unecessarily, can be moved to Camera base constructor.
 		double w = 2;
@@ -577,6 +617,12 @@ public class SceneObject:SceneEntity,SurfaceProperties
 {
 	public Vector3d Color { get; set; }
 	public Material Material { get; set; }
+	public SceneObject()
+	{
+		Color = new Vector3d(255, 0, 0);
+		Material = new Phong(0.2f,0.8f,0.2f,100);
+		Position = new Vector3d(0,0,0);
+	}
 	public SceneObject(Vector3d color,Material material)
 	{
 		Color= color;
@@ -595,18 +641,23 @@ public class SceneObject:SceneEntity,SurfaceProperties
    
 }
 
-public class Sphere:SceneObject,SurfaceProperties
+public class Sphere:SceneObject
 {
 	public float Radius;
 	public Vector3d Center { get { return Position; } }
 
+
+	public Sphere():base()
+	{
+		Radius = 1;
+	}
 	/// <summary>
 	/// Initializes a sphere in the scene with the defined color, position, and radius.
 	/// </summary>
 	/// <param name="color"></param>
 	/// <param name="Pos"></param>
 	/// <param name="R"></param>
-	public Sphere(Vector3d color, Vector3d Pos,Material material,float R = 10) : base(color,material)
+	public Sphere(Vector3d color, Vector3d Pos,Material material,float R) : base(color,material)
 	{
 		Radius = R;
 		Position = Pos;
@@ -655,6 +706,11 @@ public class Sphere:SceneObject,SurfaceProperties
 
 public class Box:SceneObject,SurfaceProperties
 {
+
+	public Box() : base()
+	{
+
+	}
 	public Box(Vector3d color,Material material):base(color,material)
 	{
 
@@ -708,9 +764,16 @@ public interface LightSource
 
 public class PointLight:LightSource
 {
-	Vector3d Position;
+	public Vector3d Position;
     public Vector3d DiffuseLighting { get; set; }
     public Vector3d SpecularLighting { get; set; }
+
+	public PointLight()
+	{
+		Position = new Vector3d(0, 0, 0);
+		DiffuseLighting = new Vector3d(1, 1,1);
+		SpecularLighting = new Vector3d(1, 1, 1);
+	}
 
     public PointLight(Vector3d position, Vector3d diffuse_lighting, Vector3d specular_lighting)
 	{
@@ -730,7 +793,20 @@ public class PointLight:LightSource
     }
 }
 
-public class DirectionalLight
+public class DirectionalLight:LightSource	
 {
+    public Vector3d Direction;
+    public Vector3d DiffuseLighting { get; set; }
+    public Vector3d SpecularLighting { get; set; }
+    public DirectionalLight()
+    {
+        Direction = new Vector3d(1, 1, 1);
+        DiffuseLighting = new Vector3d(1, 1, 1);
+        SpecularLighting = new Vector3d(1, 1, 1);
+    }
 
+    public Ray GetRay(Vector3d point)
+	{
+		return new Ray(new Vector3d(0, 0, 0), new Vector3d(0, 0, 0));
+	}
 }
