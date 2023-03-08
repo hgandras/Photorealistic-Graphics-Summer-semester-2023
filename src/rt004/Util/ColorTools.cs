@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OpenTK.Mathematics;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -46,7 +47,15 @@ public static class ColorTools
         return Color.FromArgb((int)r, (int)g, (int)b);
     }
 
+    public static Vector3d ArrToV3d(float[] color)
+    {
+        return new Vector3d(color[0], color[1], color[2]);
+    }
 
+    public static float[] V3dToArr(Vector3d color)
+    {
+        return new float[] { (float)color.X, (float)color.Y, (float)color.Z };
+    }
 }
 
 /// <summary>

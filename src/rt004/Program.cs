@@ -105,15 +105,14 @@ internal class Program
                 double centered_x = w - wid / 2d;
                 double centered_y = h - hei / 2d;
 
-                
                 if (Math.Pow((centered_x), 2) + Math.Pow((centered_y), 2) < Math.Pow(radius, 2))
                 {
                     Color color_rgb = ColorTools.lerpRGB(color1, color2, 1f/hei*(float)h);
                     fi.PutPixel(w, h, new float[3] { color_rgb.R, color_rgb.G, color_rgb.B });
                 }
                 else
-                    fi.PutPixel(w, h, new float[3] { 256f, 256f, 256f });              
-            }
+                    fi.PutPixel(w, h, new float[3] { 1f, 1f, 1f });              
+          }
         }
 
         //Save image based on name extension, if that is not given, save as pfm
@@ -143,8 +142,8 @@ internal class Program
          * Here methods of the scene can be called (the ones that are implemented), like adding an object, pointing the camera to an added object, 
          * or simply doing any transformation with the camera. The default scene set up is defined by the config file.
          */
-        scene.SwapObject(1);
-        scene.Object.Translate(new Vector3d(0,-35,0));
+        //scene.SwapObject(1);
+        //scene.Object.Translate(new Vector3d(0,-35,0));
         FloatImage img=scene.SynthesizeImage();
         img.SavePFM("PathTrace.pfm");
         Console.WriteLine("HDR image is finished.");

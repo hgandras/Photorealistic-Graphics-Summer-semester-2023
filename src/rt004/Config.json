@@ -5,26 +5,27 @@
     "color2": "0xFFFF00"
   },
   "CameraConfig": {
-    "Position": [ 0, 0, 50],
+    "Position": [ 0, 0, 80],
     "Target": [ 0, 0, 0 ],
     "FOV": 90
   },
   "SceneConfig": {
     "WorldUpDirection": [ 0, 1, 0 ],
     "LightSourcePosition": [ 0, 10, 0 ],
-    "Objects": [ "Sphere" ,"Sphere"],
+    "Objects": [ "Sphere", "Sphere","Sphere" ],
     "ObjectColors": [
-      [ 0, 255, 0 ],
-      [0,0,255]
+      [ 0, 0, 255 ],
+      [ 0, 255, 255 ],
+      [255,0,0]
     ],
     "ObjectPositions": [
       [ 0, 0, 0 ],
-      [0,40,0]
+      [ 0, -40, 0 ],
+      [-30,0,-30]
     ]
   },
   "PlaneConfig": {
-    "Height": 1000,
-    "Width": 1200,
-    "DistanceFromCamera": 10
+    "Height": 1200,
+    "Width": 1600
   }
 }

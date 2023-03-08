@@ -29,11 +29,13 @@ namespace rt004;
 
 public class Scene
 {
-	public Vector3d LightSourcePosition;
 	public Vector3d WorldUpDirection;
 	public Camera Cam;
 	public SceneObject Object;
 	public Plane Plane;
+
+	public LightSource LightSource;
+	public Vector3d AmbientLighting;
 
 	public int ObjectCount { get { return Objects.Count(); } }
 	public int CamCount { get { return Cameras.Count(); } }
@@ -67,7 +69,8 @@ public class Scene
         float[] v = config.SceneConfig.WorldUpDirection;
 		float[] l = config.SceneConfig.LightSourcePosition;
 		WorldUpDirection = new Vector3d(v[0], v[1], v[2]);
-		LightSourcePosition = new Vector3d(l[0], l[1], l[2]);
+		LightSource = new PointLight(new Vector3d(20,200,20),new Vector3d(1,1,1),new Vector3d(1,1,1));
+		AmbientLighting = new Vector3d(1, 1, 1);
 		Plane = new Plane(config.PlaneConfig);
 		//Check if they have the same length as safety measure.
 		if(config.SceneConfig.ObjectColors.Count()==config.SceneConfig.Objects.Count() && config.SceneConfig.Objects.Count()==config.SceneConfig.ObjectPositions.Count())
@@ -76,14 +79,13 @@ public class Scene
             {
                 float[] OPs = config.SceneConfig.ObjectPositions[i];
                 Vector3d pos = new Vector3d(OPs[0], OPs[1], OPs[2]);
-                AddObject(config.SceneConfig.Objects[i], pos, config.SceneConfig.ObjectColors[i]);
+                AddObject(config.SceneConfig.Objects[i], pos, ColorTools.ArrToV3d(config.SceneConfig.ObjectColors[i]));
             }
-            
 		}
 		else
 		{
             Console.WriteLine("Not all object's properties, or too much properties are defined in config file.");
-            AddObject("Sphere", new Vector3d(0, 0, 0), new float[] { 0, 0, 255 }); //Adds a sphere to the scene in that case.
+            AddObject("Sphere", new Vector3d(0, 0, 0), new Vector3d( 0, 0, 255 )); //Adds a sphere to the scene in that case.
         }
 		Object = Objects[0]; //Set current object to the first object added.	
 	}
@@ -93,13 +95,13 @@ public class Scene
 	/// </summary>
 	/// <param name="ObjPosition">The position of the object</param>
 	/// <param name="shape">String that represents the object type. Possible values: Sphere</param>
-	public void AddObject(string shape, Vector3d ObjPosition, float[] Color)
+	public void AddObject(string shape, Vector3d ObjPosition, Vector3d Color)
 	{
 		SceneObject new_object;
 		switch(shape)
 		{
 			case "Sphere":
-				new_object = new Sphere( Color,ObjPosition);
+				new_object = new Sphere( Color,ObjPosition,new Phong(0.5f,0.8f,0.2f,80),20);
                 Objects.Add(new_object);
                 break; 
         }
@@ -143,8 +145,7 @@ public class Scene
 	{
 		FloatImage image = new FloatImage(Plane.PxWidth,Plane.PxHeight,3);
 
-        //Transform all object's positions to the camera's system
-
+        //Transform all object's positions to the camera's system for intersection calculation
         List<Vector3d> obj_positions = new List<Vector3d>();
 		foreach (SceneObject obj in Objects)
 		{
@@ -167,12 +168,22 @@ public class Scene
                         ray.Intersections.Add(Objects[i], intersections);
 					}
 				}
-				SceneObject? sO = ray.FirstIntersection;
+				SceneObject? sO = ray.FirstIntersectedObject;
 				if (sO == null)
-					image.PutPixel(w, h, new float[] { 0, 0, 0 });
+					image.PutPixel(w, h, new float[] { 0.1f,0.2f,0.3f});
 				else
 				{
-					image.PutPixel(w, h, ray.FirstIntersection.Color);
+                    //Transform ray to world coordinates
+                    //Console.WriteLine(ray.Origin + " " + " " + ray.Direction + " " + Cam.Position);
+                    ray.Origin = Cam.Position;
+
+					//Normalize is probebly unnecessary, because ray direction vectors are normalized in previous calculations.
+                    ray.Direction = Vector3d.Normalize((Matrix4d.Invert(Cam.CameraTransformMatrix)*new Vector4d(ray.Direction,1)).Xyz-ray.Origin);
+					//Console.WriteLine(ray.Origin+" "+" "+ray.Direction+" "+Cam.Position);
+
+					Vector3d pixel_color = sO.Material.GetReflectedColor(ray, AmbientLighting, LightSource);
+					float[] fin_color = ColorTools.V3dToArr(pixel_color/256);
+					image.PutPixel(w,h,fin_color);
 				}
             }
 		}
@@ -276,14 +287,26 @@ public class Ray
 	/// <summary>
 	/// Returns the first object that the ray encountered, based on the t value intervals in the Intersections property.
 	/// </summary>
-	public SceneObject? FirstIntersection { 
+	public SceneObject? FirstIntersectedObject { 
 		get {
 			Dictionary<SceneObject,float> first_intersection= Intersections.ToDictionary(k=>k.Key,v=>v.Value.Min());
 			SceneObject? fi =first_intersection.Values.Count()==0 ? null: first_intersection.MinBy(kvp => kvp.Value).Key;
 			return fi; 
 			} }
+	
+	/// <summary>
+	/// Returns the parameter t, which represents the ray intersection.
+	/// </summary>
+	public float FirstIntersection { 
+		get { 
+			return FirstIntersectedObject==null?float.PositiveInfinity:Intersections[FirstIntersectedObject].Min(); 
+			} }
+
 	public Vector3d Origin;
+
 	public Vector3d Direction;
+
+	
 
 	/// <summary>
 	/// Origing, and direction. The constructor normalizes them before assigning it to its fields.
@@ -296,6 +319,17 @@ public class Ray
 		Origin =origin==Vector3d.Zero? origin:Vector3d.Normalize(origin);
 		Direction = direction==Vector3d.Zero?direction:Vector3d.Normalize(direction);
 	}
+
+	/// <summary>
+	/// Returns a point on the ray, given parameter value t. (R=O+t*D , where O is the ray origin, and 
+	/// D is the  ray direction).
+	/// </summary>
+	/// <param name="t"></param>
+	/// <returns></returns>
+    public Vector3d GetRayPoint(float t)
+    {
+		return Origin+t*Direction;
+    }
 }
 
 
@@ -337,7 +371,8 @@ public class Camera : SceneEntity
 	/// <summary>
 	/// A 3x3 matrix which's rows contain the camera coordinate system axes in the world coordinate system.
 	/// </summary>
-	public Matrix3d CameraSystem {
+	public Matrix3d CameraSystem 
+	{
 		get 
 		{
 			if (Scene != null)
@@ -353,6 +388,18 @@ public class Camera : SceneEntity
 				return new Matrix3d();
 			}
 		}
+	}
+	
+	public Matrix4d CameraTransformMatrix
+	{
+		get 
+		{
+            Matrix4d camSystem = new Matrix4d(new Vector4d(CamX, 0), new Vector4d(CamY, 0), new Vector4d(CamZ, 0), new Vector4d(0, 0, 0, 1));
+            Matrix4d translation = Matrix4d.CreateTranslation(-Position);
+            translation.Transpose();
+
+			return camSystem * translation;
+        }
 	}
 
 	/// <summary>
@@ -392,6 +439,7 @@ public class Camera : SceneEntity
 
         return (camSystem * translation * lookat_cam_system).Xyz;
     }
+
 
 	/// <summary>
 	/// Sets the camera to look at the specified point, and transforms that point's position to 
@@ -506,37 +554,43 @@ public class ParallelCamera :Camera
 }
 
 
+public interface SurfaceProperties
+{
+    public Material Material { get; set; }
+    public float[] Intersection(Ray ray, Vector3d position);
+	public Vector3d SurfaceNormal(Vector3d point);
+
+}
+
 /// <summary>
 /// Represents an SceneObject in the scene. Also defines operations between the scene objects. 
 /// </summary>
-public class SceneObject:SceneEntity
+public class SceneObject:SceneEntity,SurfaceProperties
 {
-	public float[] Color { get; set; }
-
-	public SceneObject(float[] color)
+	public Vector3d Color { get; set; }
+	public Material Material { get; set; }
+	public SceneObject(Vector3d color,Material material)
 	{
 		Color= color;
+		Material = material;
 	}
 	//TODO: Might be useful to define a local coordinate system for this.
-
-    /// <summary>
-    /// Right now it just returns wether the ray intersects the object, or not. It it intersects it, the pixel's color the
-    /// ray is shot through should be set to the object's color.
-	/// 
-	/// Might also return the intersection points, but at first this is enough.
-    /// </summary>
-    /// <param name="Ray"></param>
-    /// <returns></returns>
-    public virtual float[] Intersection(Ray ray,Vector3d pos)
+	public virtual float[] Intersection(Ray ray,Vector3d position)
 	{
-		return null;
+		return new float[] {float.PositiveInfinity};
 	}
+
+	public virtual Vector3d SurfaceNormal(Vector3d point)
+	{
+		return Vector3d.Zero;
+	}
+   
 }
 
-
-public class Sphere:SceneObject
+public class Sphere:SceneObject,SurfaceProperties
 {
 	public float Radius;
+	public Vector3d Center { get { return Position; } }
 
 	/// <summary>
 	/// Initializes a sphere in the scene with the defined color, position, and radius.
@@ -544,10 +598,11 @@ public class Sphere:SceneObject
 	/// <param name="color"></param>
 	/// <param name="Pos"></param>
 	/// <param name="R"></param>
-	public Sphere(float[] color, Vector3d Pos, float R = 10) : base(color)
+	public Sphere(Vector3d color, Vector3d Pos,Material material,float R = 10) : base(color,material)
 	{
 		Radius = R;
 		Position = Pos;
+		Material = material;
 	}
 
 	/// <summary>
@@ -557,12 +612,12 @@ public class Sphere:SceneObject
 	/// <param name="ray"></param>
 	/// <param name="pos">The object's position in the camera's system. </param>
 	/// <returns></returns>
-    public override float[] Intersection(Ray ray, Vector3d pos)
+    public override float[] Intersection(Ray ray, Vector3d cam_sys_pos)
 	{
 		//Calculate coefficients
 		double a = Vector3d.Dot(ray.Direction,ray.Direction);
-		double b = 2 * Vector3d.Dot(ray.Direction, ray.Origin - pos);
-		double c = Vector3d.Dot(pos, pos) + Vector3d.Dot(ray.Origin, ray.Origin) - 2 * Vector3d.Dot(pos, ray.Origin) - Radius * Radius;
+		double b = 2 * Vector3d.Dot(ray.Direction, ray.Origin - cam_sys_pos);
+		double c = Vector3d.Dot(cam_sys_pos, cam_sys_pos) + Vector3d.Dot(ray.Origin, ray.Origin) - 2 * Vector3d.Dot(cam_sys_pos, ray.Origin) - Radius * Radius;
 
 		double discriminant = b * b - 4 * a * c;
 
@@ -578,36 +633,56 @@ public class Sphere:SceneObject
         return null;
     }
 
-	public Vector3d SurfaceNormal(Vector3d point)
+	/// <summary>
+	/// Returns the normal of a given point, if it is on the sphere. (Not a very general function, maybe 
+	/// parameterizing the sphere by azimuth and zenith angle would be better).
+	/// </summary>
+	/// <param name="point"></param>
+	/// <returns></returns>
+	public override Vector3d SurfaceNormal(Vector3d point)
 	{
-		return Vector3d.Normalize(Position - point);
+		return Vector3d.Normalize(Center - point);
 	}
-
 }
 
-public class Box:SceneObject
+public class Box:SceneObject,SurfaceProperties
 {
-	public Box(float[] color):base(color)
+	public Box(Vector3d color,Material material):base(color,material)
 	{
 
 	}
+
+	public new float[] Intersection(Ray ray,Vector3d cam_sys_pos)
+	{
+		return new float[] { };
+	}
+
+	public new Vector3d SurfaceNormal(Vector3d point)
+	{
+		return Vector3d.Zero;
+	}
 }
 
-public class Cylinder:SceneObject
+public class Cylinder:SceneObject,SurfaceProperties
 {
 	public float Radius,Height;
 
-	public Cylinder(float[] color,float Rad,float Hei,Vector3d Pos):base(color)
+	public Cylinder(Vector3d color,Material material,float Rad,float Hei,Vector3d Pos):base(color,material)
 	{
 		Radius = Rad;
 		Height = Hei;
 		Position = Pos;
 	}
 
-	
-    public override float[] Intersection(Ray ray,Vector3d pos)
+
+    public new float[] Intersection(Ray ray, Vector3d cam_sys_pos)
     {
-        return null;
+        return new float[] { };
+    }
+
+    public new Vector3d SurfaceNormal(Vector3d point)
+    {
+        return Vector3d.Zero;
     }
 
 
@@ -618,16 +693,22 @@ public class Cylinder:SceneObject
 /// </summary>
 public interface LightSource
 {
-
+	public Ray GetRay(Vector3d point);
+	public Vector3d DiffuseLighting { get; set; }
+	public Vector3d SpecularLighting { get; set; }
 }
 
 public class PointLight:LightSource
 {
 	Vector3d Position;
-	
-	public PointLight(Vector3d position)
+    public Vector3d DiffuseLighting { get; set; }
+    public Vector3d SpecularLighting { get; set; }
+
+    public PointLight(Vector3d position, Vector3d diffuse_lighting, Vector3d specular_lighting)
 	{
 		Position = position;
+		DiffuseLighting = diffuse_lighting;
+		SpecularLighting = specular_lighting;
 	}
 
 	/// <summary>
@@ -641,7 +722,7 @@ public class PointLight:LightSource
     }
 }
 
-public class DirectionalLight:LightSource
+public class DirectionalLight
 {
 
 }
