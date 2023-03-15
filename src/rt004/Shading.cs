@@ -10,7 +10,7 @@ namespace rt004;
 
 public abstract class Material
 {
-    public abstract Vector3d GetReflectedColor(Ray ray, Vector3d ambient_lighting, params LightSource[] light);
+    public abstract Vector3d GetReflectedColor(Ray ray, Vector3d ambient_lighting, List<LightSource> light);
 }
 
 public class Phong:Material
@@ -33,14 +33,14 @@ public class Phong:Material
     /// <param name="ambient_lighting">The color value of the ambient lighting</param>
     /// <param name="light">The light sources in the scene.</param>
     /// <returns></returns>
-    public override Vector3d GetReflectedColor(Ray ray, Vector3d ambient_lighting,params LightSource[] light_sources)
+    public override Vector3d GetReflectedColor(Ray ray, Vector3d ambient_lighting,List<LightSource> light_sources)
     {
         //TODO: Implement for multiple light sources.
-        if (ray.FirstIntersectedObject==null || light_sources.Length==0)//If the object is not intersected or there are                                                                
+        if (ray.FirstIntersectedObject==null || light_sources.Count()==0)//If the object is not intersected or there are                                                                
             return ambient_lighting;                            //no light sources in the scene, the pixel value
                                                                 //is just the ambient lighting
         Vector3d intersection_point = ray.GetRayPoint(ray.FirstIntersection);
-        Vector3d surface_normal = ray.FirstIntersectedObject.SurfaceNormal(intersection_point);
+        Vector3d surface_normal = ray.FirstIntersectedObject.SurfaceNormal(ray);
 
         Vector3d view_direction=ray.Direction;
 

@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using OpenTK.Mathematics;
 
 namespace rt004;
@@ -16,6 +17,7 @@ namespace rt004;
 /// </summary>
 public class Config
 {
+    private ILogger logger=Logging.CreateLogger<Config>();
     public CameraConfig CameraConfig;
     public SceneConfig SceneConfig;
     public GeneralConfig GeneralConfig;
@@ -33,13 +35,14 @@ public class Config
         {
             CameraConfig = JsonSerializer.Deserialize<CameraConfig>(camobj);
             SceneConfig = JsonSerializer.Deserialize<SceneConfig>(sceneobj);
+            SceneConfig.Init();
             GeneralConfig = JsonSerializer.Deserialize<GeneralConfig>(genobj);
             PlaneConfig = JsonSerializer.Deserialize<PlaneConfig>(planeobj);
         }
         catch (NullReferenceException)
         {
-            //Will be modified later to be more verbose
-            Console.WriteLine("Config file is not correct");
+            logger.LogCritical("One of the configs initialized as null, config file is not set up correctly. Exiting.");
+            Environment.Exit(1);
         }
     }   
 }
@@ -64,14 +67,76 @@ public class CameraConfig
 
 public class SceneConfig
 {
+    public ILogger logger = Logging.CreateLogger<SceneConfig>();
     public float[] WorldUpDirection { get; set; }
-    public List<string> Objects { get; set; }
-    public List<float[]> ObjectColors { get; set; }
-    public List<float[]> ObjectPositions { get; set; }
-    public List<float[]> PointLightPositions { get; set; }
 
+    public readonly List<SceneObject> SceneObjects=new List<SceneObject>();
+    public void Init()
+    {
+        try
+        {
+            if (Objects.Spheres.Number != Objects.Spheres.Positions.Count())
+                logger.LogWarning("Number of denoted spheres is different than number of positions!");
+            for (int i = 0; i < Objects.Spheres.Number; i++)
+            {
+                SceneObjects.Add(new Sphere(
+                                ColorTools.ArrToV3d(Objects.Spheres.Colors[i]),
+                                ColorTools.ArrToV3d(Objects.Spheres.Positions[i])
+                                , new Phong(Objects.Spheres.Materials[i][0], Objects.Spheres.Materials[i][1], Objects.Spheres.Materials[i][2], Objects.Spheres.Materials[i][3])
+                                , Objects.Spheres.Radiuses[i]));
+            }
+            if (Objects.Planes.Number != Objects.Planes.Positions.Count())
+                logger.LogWarning("Number of denoted planes is different than number of positions!");
+            for (int i = 0; i < Objects.Planes.Number; i++)
+            {
+                SceneObjects.Add(new Plane(ColorTools.ArrToV3d(Objects.Planes.Positions[i])
+                                , ColorTools.ArrToV3d(Objects.Planes.Normals[i])
+                                , ColorTools.ArrToV3d(Objects.Planes.Colors[i])
+                                , new Phong(Objects.Spheres.Materials[i][0], Objects.Spheres.Materials[i][1], Objects.Spheres.Materials[i][2], Objects.Spheres.Materials[i][3])
+                                ));
+            }
+        }
+        catch (IndexOutOfRangeException)
+        {
+            logger.LogWarning("Not all object's attributes were specified in config file properly. Not all objects were added to the scene.");
+        }
+    }
+    public class Obj
+    {
+        /// <summary>
+        /// Creates objects that are in the scene with the given properties. 
+        /// </summary>
+        
+        public class SphereObjects
+        {
+            public int Number { get; set; }
+
+            public string Instance = "Sphere";
+            public List<float[]> Positions { get; set; }
+            public List<float[]> Colors { get; set; }
+            public List<float[]> Materials { get; set; }
+            public float[] Radiuses { get; set; } 
+        }
+        public class PlaneObjects
+        {
+            public string Instance = "Plane";
+            public int Number { get; set; }
+            public List<float[]> Normals { get; set; }
+            public List<float[]> Positions { get; set; }
+            public List<float[]> Colors { get; set; }
+            public List<float[]> Materials { get; set; }
+        }
+        public SphereObjects Spheres { get; set; }
+        public PlaneObjects Planes { get; set; }
+
+    }
+    public Obj Objects { get; set; }
+    
+    public List<float[]> PointLightPositions { get; set; }
     public List<float[]> DirectionalLightDirections { get; set; }
     public float[] AmbientLighting { get; set; }
+
+    
 
 }
 
@@ -79,4 +144,16 @@ public class PlaneConfig
 {
     public int Height { get; set; }
     public int Width { get; set; }
+}
+
+public static class Logging
+{
+    public static ILogger CreateLogger<T>()
+    {
+        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole(options => { options.TimestampFormat = "[HH:mm:ss] "; }).AddDebug().SetMinimumLevel(LogLevel.Debug));
+        var logger = loggerFactory.CreateLogger<T>();
+
+        return logger;
+    }
+
 }

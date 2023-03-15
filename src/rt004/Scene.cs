@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Numerics;
 using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using OpenTK.Mathematics;
 using Util;
@@ -29,6 +30,11 @@ namespace rt004;
  * TODO: Modify config file, so light sources can be added from it
  * 
  * TODO: Implement other shapes, light source, and camera types if I have time. Maybe implement another shading method.
+ * 
+ * TODO: Try to add materials to the config file as well.
+ * 
+ * TODO: Modify the intersection function that the ray should be in the world's coordinate system rather than in the 
+ *		 camera's system.
  */
 
 public class Scene
@@ -36,7 +42,7 @@ public class Scene
 	//Some scene properties
 	public Vector3d WorldUpDirection;
     public Vector3d AmbientLighting;
-    public Plane Plane;
+    public ProjectionPlane Plane;
     public int PlaneWidthPx;
     public int PlaneHeightPx;
     public int ObjectCount { get { return Objects.Count(); } }
@@ -69,8 +75,7 @@ public class Scene
 	/// </summary>
 	public Scene(Config config)
 	{
-		var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().AddDebug().SetMinimumLevel(LogLevel.Debug));
-		logger = loggerFactory.CreateLogger<Scene>();
+		logger = Logging.CreateLogger<Scene>();
 		//Initializing some properties
 		Objects= new List<SceneObject>();
 		LightSources = new List<LightSource>();
@@ -81,18 +86,15 @@ public class Scene
         Cam = Cameras[0];
 		WorldUpDirection = ColorTools.ArrToV3d(config.SceneConfig.WorldUpDirection); 
 		AmbientLighting =ColorTools.ArrToV3d(config.SceneConfig.AmbientLighting);
-		Plane = new Plane(config.PlaneConfig);
+        Plane = new ProjectionPlane(config.PlaneConfig);
 
 		//Add scene elements based on properties
 		try
 		{
-			for(int i=0;i<config.SceneConfig.Objects.Count();i++)
+			foreach(SceneObject so in config.SceneConfig.SceneObjects)
 			{
-				AddObject(config.SceneConfig.Objects[i]);
-				Object = Objects[i];
-				Object.Position =ColorTools.ArrToV3d( config.SceneConfig.ObjectPositions[i]);
-				Object.Color = ColorTools.ArrToV3d(config.SceneConfig.ObjectColors[i]);
-				Object.Material = new Phong(0.2f,0.8f,0.2f,150); //TODO: This should be added to config file.
+				logger.LogInformation("Scene object {} at position {} added.", so.GetType(), so.Position);
+				AddObject(so);
 			}
 			for(int i=0;i<config.SceneConfig.PointLightPositions.Count();i++)
 			{
@@ -135,9 +137,20 @@ public class Scene
 			case "Box":
 				new_object = new Box();
 				Objects.Add(new_object);
-				break;	
+				break;
+
+			/*case "Plane":
+				new_object = new Plane();
+				Objects.Add(new_object);
+				break;*/
+
         }
     }
+
+	public void AddObject(SceneObject scene_object)
+	{
+		Objects.Add(scene_object);
+	}
 
 	public void AddLightSource(string type)
 	{
@@ -161,7 +174,7 @@ public class Scene
 	/// </summary>
 	public void RemoveObject()
 	{
-		
+		throw new NotImplementedException();
 	}
 
 	/// <summary>
@@ -197,13 +210,6 @@ public class Scene
 	public FloatImage SynthesizeImage()
 	{
 		FloatImage image = new FloatImage(Plane.PxWidth,Plane.PxHeight,3);
-
-        //Transform all object's positions to the camera's system for intersection calculation
-        List<Vector3d> obj_positions = new List<Vector3d>();
-		foreach (SceneObject obj in Objects)
-		{
-			obj_positions.Add(Cam.CameraTransform(obj.Position));
-		}
 		//Iterate through the pixels 
 		for(int h=0;h<Plane.PxHeight;h++)
 		{
@@ -211,10 +217,14 @@ public class Scene
 			{
 				//Cast the rays for each h,w pixel
 				Ray ray=Cam.CastRay(Plane, w, h);
-				for(int i=0;i<Objects.Count();i++)
+				//Transform ray to world coordinate system
+                ray.Origin = Cam.Position;
+                ray.Direction = ray.Direction = Vector3d.Normalize((Matrix4d.Invert(Cam.CameraTransformMatrix) * new Vector4d(ray.Direction, 1)).Xyz - ray.Origin);
+
+                for (int i=0;i<Objects.Count();i++)
 				{
 					//If the ray intersects the object, set pixel color value to the object's value, else black.
-					float[]? intersections = Objects[i].Intersection(ray, obj_positions[i]);
+					float[]? intersections = Objects[i].Intersection(ray);
 					if (intersections != null)
 					{
                         ray.Intersections.Add(Objects[i], intersections);
@@ -225,13 +235,8 @@ public class Scene
 					image.PutPixel(w, h, new float[] { 0.1f,0.2f,0.3f});
 				else
 				{
-                    //Transform ray to world coordinates
-                    ray.Origin = Cam.Position;
-
-					//Normalize is probebly unnecessary, because ray direction vectors are normalized in previous calculations.
-                    ray.Direction = Vector3d.Normalize((Matrix4d.Invert(Cam.CameraTransformMatrix)*new Vector4d(ray.Direction,1)).Xyz-ray.Origin);
-
-					Vector3d pixel_color = sO.Material.GetReflectedColor(ray, AmbientLighting, LightSources[0], LightSources[1]);
+					//Calculate reflected color values
+					Vector3d pixel_color = sO.Material.GetReflectedColor(ray, AmbientLighting, LightSources);
 					float[] fin_color = ColorTools.V3dToArr(pixel_color/256);
 					image.PutPixel(w,h,fin_color);
 				}
@@ -311,12 +316,18 @@ public class SceneEntity
 /// TODO: Decide whether the plane properties will just be part of the camera class, because most of its 
 /// parameters are projection specific.
 /// </summary>
-public class Plane
+public class ProjectionPlane
 {
 	public int PxWidth;
 	public int PxHeight;
 
-	public Plane(PlaneConfig config)
+	public double W { get { return 2; } }
+	public double h { get { return PxHeight * (W / PxWidth); } }
+
+    public double WPixelStep { get {return W / PxWidth; } }
+	public double h_pixel_step { get { return h / PxHeight ; } }
+
+    public ProjectionPlane(PlaneConfig config)
 	{
 		PxHeight = config.Height;
 		PxWidth = config.Width;
@@ -491,7 +502,6 @@ public class Camera : SceneEntity
         return (camSystem * translation * lookat_cam_system).Xyz;
     }
 
-
 	/// <summary>
 	/// Sets the camera to look at the specified point, and transforms that point's position to 
 	/// the camera's coordinate system, and returns it(I)
@@ -504,10 +514,20 @@ public class Camera : SceneEntity
 		return CameraTransform(target);
 	}
 
+	/// <summary>
+	/// Looks at the object in the scene, but if the scene is no initialized yet, it looks at the origin
+	/// </summary>
+	/// <param name="objID"></param>
+	/// <returns></returns>
 	public Vector3d LookAt(int objID)
 	{
-		Scene.SwapObject(objID);
-		return LookAt(Scene.Object.Position);
+		if (Scene != null)
+		{
+			Scene.SwapObject(objID);
+			return LookAt(Scene.Object.Position);
+		}
+		//Also log here
+		return Vector3d.Zero;
 	}
 
     /// <summary>
@@ -528,7 +548,7 @@ public class Camera : SceneEntity
 	{
 		return CameraSystem * sceneEntity.Position;
 	}
-	public virtual Ray CastRay(Plane plane, int px_x, int px_y)
+	public virtual Ray CastRay(ProjectionPlane plane, int px_x, int px_y)
 	{
 		return new Ray(new Vector3d(),new Vector3d());
 	}
@@ -554,20 +574,14 @@ public class PerspectiveCamera:Camera
 	/// <param name="px_y"></param>
 	/// <returns>The ray's direction vector in the camera coordinate system.</returns>
 	/// <exception cref="NotImplementedException"></exception>
-	public override Ray CastRay(Plane plane, int px_x, int px_y)
+	public override Ray CastRay(ProjectionPlane plane, int px_x, int px_y)
 	{
-		//Calculate size of the plane, if the width is considered to be size 2.
-		//TODO: These caculations are the same for every ray, move the out of the function so it is not calculated unecessarily, can be moved to Camera base constructor.
-		double w = 2;
-		double h = plane.PxHeight * (w /plane.PxWidth);
 		
-		double w_pixel_step = w / plane.PxWidth;
-		double h_pixel_step=h/plane.PxHeight;
 	
-        double x = px_x * w_pixel_step + w_pixel_step / 2 - w / 2;
-		double y = px_y * h_pixel_step + h_pixel_step / 2 - h / 2;
+        double x = px_x * plane.WPixelStep + plane.WPixelStep / 2 - plane.W / 2;
+		double y = px_y * plane.h_pixel_step + plane.h_pixel_step / 2 - plane.h / 2;
 		//The intersected point in the plane in the camera system
-		double z = (w / 2f) / Math.Tan(FOV / 360f * Math.PI);
+		double z = (plane.W / 2f) / Math.Tan(FOV / 360f * Math.PI);
         Vector3d intersection_point =new Vector3d(x,-y,-z);
 		
 		return new Ray( Vector3d.Zero,Vector3d.Normalize(intersection_point));
@@ -597,7 +611,7 @@ public class ParallelCamera :Camera
 	/// <param name="px_y"></param>
 	/// <returns></returns>
 	/// <exception cref="NotImplementedException"></exception>
-    public override Ray CastRay(Plane plane, int px_x, int px_y)
+    public override Ray CastRay(ProjectionPlane plane, int px_x, int px_y)
     {
         throw new NotImplementedException();
     }
@@ -607,9 +621,8 @@ public class ParallelCamera :Camera
 public interface SurfaceProperties
 {
     public Material Material { get; set; }
-    public float[] Intersection(Ray ray, Vector3d position);
-	public Vector3d SurfaceNormal(Vector3d point);
-
+    public float[]? Intersection(Ray ray);
+	public Vector3d SurfaceNormal(Ray ray);
 }
 
 /// <summary>
@@ -630,18 +643,18 @@ public class SceneObject:SceneEntity,SurfaceProperties
 		Color= color;
 		Material = material;
 	}
-	//TODO: Might be useful to define a local coordinate system for this.
-	public virtual float[] Intersection(Ray ray,Vector3d position)
+	public virtual float[]? Intersection(Ray ray)
 	{
 		return new float[] {float.PositiveInfinity};
 	}
 
-	public virtual Vector3d SurfaceNormal(Vector3d point)
+	public virtual Vector3d SurfaceNormal(Ray point)
 	{
 		return Vector3d.Zero;
 	}
    
 }
+
 
 public class Sphere:SceneObject
 {
@@ -667,18 +680,18 @@ public class Sphere:SceneObject
 	}
 
 	/// <summary>
-	/// Calculates whether the ray and the onject intersect each other. It is important that the ray and the 
-	/// object's data must be in the same coordinate system. Currently it will also accept a position argument.
+	/// Calculates whether the ray and the object intersect each other. It is important that the ray and the 
+	/// object's data must be in the same coordinate system. Currently it also accepts a position in the camera system argument.
 	/// </summary>
 	/// <param name="ray"></param>
 	/// <param name="pos">The object's position in the camera's system. </param>
 	/// <returns></returns>
-    public override float[] Intersection(Ray ray, Vector3d cam_sys_pos)
+    public override float[]? Intersection(Ray ray)
 	{
 		//Calculate coefficients
 		double a = Vector3d.Dot(ray.Direction,ray.Direction);
-		double b = 2 * Vector3d.Dot(ray.Direction, ray.Origin - cam_sys_pos);
-		double c = Vector3d.Dot(cam_sys_pos, cam_sys_pos) + Vector3d.Dot(ray.Origin, ray.Origin) - 2 * Vector3d.Dot(cam_sys_pos, ray.Origin) - Radius * Radius;
+		double b = 2 * Vector3d.Dot(ray.Direction, ray.Origin - Position);
+		double c = Vector3d.Dot(Position, Position) + Vector3d.Dot(ray.Origin, ray.Origin) - 2 * Vector3d.Dot(Position, ray.Origin) - Radius * Radius;
 
 		double discriminant = b * b - 4 * a * c;
 
@@ -686,11 +699,16 @@ public class Sphere:SceneObject
 		{
 			float t1 = (float)((-b - Math.Sqrt(discriminant)) / 2 * a);
 			float t2 = (float)((-b + Math.Sqrt(discriminant)) / 2 * a);
+			
 			return new float[] { t1, t2 };
 		}
 		else if (discriminant == 0)
-			return new float[] { (float)(-b / 2 * a) };
-
+		{
+			float t = (float)(-b / 2 * a);
+			if (t < 0)
+				return null;
+			return new float[] { t};
+		} 
         return null;
     }
 
@@ -700,9 +718,80 @@ public class Sphere:SceneObject
 	/// </summary>
 	/// <param name="point"></param>
 	/// <returns></returns>
-	public override Vector3d SurfaceNormal(Vector3d point)
+	public override Vector3d SurfaceNormal(Ray ray)
 	{
-		return Vector3d.Normalize(Center - point);
+		if (!ray.Intersections.ContainsKey(this))
+		{
+			float[]? intersections = Intersection(ray);
+			ray.Intersections.Add(this, intersections);
+		}
+		Vector3d first_intersection=ray.GetRayPoint(ray.FirstIntersection);
+		return Vector3d.Normalize(Center - first_intersection);
+	}
+}
+
+/// <summary>
+/// Represents a not infinite plane in the scene
+/// </summary>
+public class BoundedPlane
+{
+
+}
+
+public class Plane : SceneObject, SurfaceProperties
+{
+
+	Vector3d Normal;
+	/// <summary>
+	/// Creates a parametric equation of a plane from the normal, and a point that lies on the plane. Since a plane's
+	/// position can'be defined, because it has an infinite span, 
+	/// </summary>
+	/// <param name="Point"></param>
+	/// <param name="Normal"></param>
+	public Plane(Vector3d Point,Vector3d Normal,Vector3d Color,Material Material)
+	{
+		this.Normal = Normal;
+		this.Material = Material;
+		this.Color = Color;
+		Position = Point;
+	}
+
+	/// <summary>
+	/// Calculates the intersection of a plane, and a ray.
+	/// </summary>
+	/// <param name="ray"></param>
+	/// <returns>The parameters t of the ray in the intersection points</returns>
+    public override float[]? Intersection(Ray ray)
+    {
+		float numerator = (float)Vector3d.Dot((Position - ray.Origin), Normal);
+		float denominator = (float)Vector3d.Dot(ray.Direction, Normal);
+        if (denominator== 0 || numerator == 0)
+			return null;
+
+		if (numerator / denominator < 0)
+			return null;
+
+        return new float[] { numerator / denominator };
+    }
+
+	/// <summary>
+	/// Returns the normal of the plane in the direction the ray intersects it.
+	/// </summary>
+	/// <param name="point"></param>
+	/// <returns></returns>
+    public override Vector3d SurfaceNormal(Ray ray)
+	{
+        //If the angle is larger than 90 degrees, that means the ray is on that side of the 
+        //plane.
+        if (!ray.Intersections.ContainsKey(this))
+        {
+            float[]? intersections = Intersection(ray);
+            ray.Intersections.Add(this, intersections);
+        }
+        double angle = Vector3d.CalculateAngle(Normal, ray.Direction);
+		if (angle > Math.PI / 2)
+			return Normal;
+		return -Normal;
 	}
 }
 

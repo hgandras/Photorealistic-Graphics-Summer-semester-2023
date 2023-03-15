@@ -17,9 +17,7 @@ internal class Program
 
   static void Main(string[] args)
   {
-
-        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole(options => { options.TimestampFormat = "[HH:mm:ss] "; }).AddDebug().SetMinimumLevel(LogLevel.Debug));
-        var logger = loggerFactory.CreateLogger<Program>();
+        var logger = Logging.CreateLogger<Program>();
         // Parameters.
         //Default parameters are specified in the config file, and the command-line arguments 
         //can overwrite them.
@@ -122,7 +120,7 @@ internal class Program
         }
 
         //Save image based on name extension, if that is not given, save as pfm
-        string[] name_extension = fileName.Split(".");
+        string[] name_extension = fileName.Split("."); 
         string file_extension;
         if(name_extension.Length==2)
         {
@@ -148,8 +146,6 @@ internal class Program
          * Here methods of the scene can be called (the ones that are implemented), like adding an object, pointing the camera to an added object, 
          * or simply doing any transformation with the camera. The default scene set up is defined by the config file.
          */
-        //scene.SwapObject(1);
-        //scene.Object.Translate(new Vector3d(0,-35,0));
         FloatImage img=scene.SynthesizeImage();
         img.SavePFM("PathTrace.pfm");
         logger.LogInformation("Path traced image created");
