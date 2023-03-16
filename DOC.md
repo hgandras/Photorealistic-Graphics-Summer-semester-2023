@@ -96,8 +96,17 @@ An example command-line argument can be the following:  width=600 height=450 fil
 ---
 Here is a brief description of how the command line application works. Besides I made a doxygen documentation for the classes, it will be uploaded when I finish all the XML commenting.
  ## Config classes
+ The config classes have the same structure as the json file. In addition the SceneConfig has an Init method, that creates the 
+ objects that are part of the scene, and when the class Config is created the Init method is called. This way, when the scene is initialized 
+ from the config file, the Scene's constructor just adds the created objects to the scene.
  ## Scene
+ In this part the scene class, and all of the elements that can be added to the scene are described (will be described).
  ## Shading
+ The shading module has two main components. One is the ReflecteceFunction abstract class. The classes that implement this
+ define a function that describes how the light is reflected on the surface of the object. Right now Phong reflectance model is the only one available.  
+
+ The other part is the different materials. They are not used in the code, since the only shading is the Phong model, and the material's parameters can be 
+ set in the config file, which are the parameters for the Phong reflection.
  ## Utils
 
 # Future plans, and some faulty behaviours.
