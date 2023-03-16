@@ -95,8 +95,12 @@ An example command-line argument can be the following:  width=600 height=450 fil
 # Architecture
 ---
 Here is a brief description of how the command line application works. Besides I made a doxygen documentation for the classes, it will be uploaded when I finish all the XML commenting.
- ## Util classes
- ## Main components
+ ## Config classes
+ ## Scene
+ ## Shading
+ ## Utils
 
 # Future plans, and some faulty behaviours.
- 
+This is a list of things that are planned to be implemented, and sbehaviours that should be solved.  
+- One not solved behaviour is if the camera is facing away from the scene, the intersection are 
+still calculated, and it creates a flipped image along both axes. This can be solved, if the intersection functions are not allowed return negative values. 
