@@ -64,8 +64,8 @@ can be found with different fields under the object. Below is an example of putt
     }, 
 ```
 The number defines how many of the defined objects will be displayed. If the number is not the same as the positions, a warning is 
-logged, in case leaving out objects was not our intention. Most of the attributes will be descibed later in more detail. Right now the only available material is
-phong reflection model. The way materials are assigned to an object will be modified when the  Another oject can be added, if we increase the number, and add the next object's attributes to the corresponding fields.  
+logged, in case leaving out objects was not our intention. Most of the attributes will be descibed later in more detail. Right now the only available reflection is
+phong reflection model, so for each object this model's parameters are assigned as the material. The way materials are assigned to an object will be modified when more materials will be available. Another oject can be added, if we increase the number, and add the next object's attributes to the corresponding fields.  
 
 The light configurations are defined in a similar way.
 ```json
