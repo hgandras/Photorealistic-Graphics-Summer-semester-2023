@@ -8,12 +8,12 @@ using System.Threading.Tasks;
 
 namespace rt004;
 
-public abstract class Material
+public abstract class ReflectanceModel
 {
     public abstract Vector3d GetReflectedColor(Ray ray, Vector3d ambient_lighting, List<LightSource> light);
 }
 
-public class Phong:Material
+public class Phong:ReflectanceModel
 {
     public float k_s,k_d,k_a,alpha;
 
@@ -62,4 +62,29 @@ public class Phong:Material
 
         return final_color;
     }
+}
+
+
+/// <summary>
+/// Interface that defines materials. The getMaterial readonly property returns a ReflectanceModel that is preset, and 
+/// its parameters cannot be modified.
+/// </summary>
+public interface Material
+{
+    public ReflectanceModel getReflectance { get; }
+}
+
+public class Phong1:Material
+{
+    public ReflectanceModel getReflectance { get { return new Phong(0.2f, 0.8f, 0.1f, 10); } }
+}
+public class Phong2 : Material
+{
+    public ReflectanceModel getReflectance { get { return new Phong(0.5f, 0.5f, 0.1f, 150); } }
+}
+public class Phong3 : Material
+{
+    public ReflectanceModel getReflectance { get { return new Phong(0.4f, 0.6f, 0.1f, 80); } }
+
+
 }

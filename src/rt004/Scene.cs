@@ -237,7 +237,7 @@ public class Scene
 				{
 					//Calculate reflected color values
 					Vector3d pixel_color = sO.Material.GetReflectedColor(ray, AmbientLighting, LightSources);
-					float[] fin_color = ColorTools.V3dToArr(pixel_color/256);
+					float[] fin_color = ColorTools.V3dToArr(pixel_color);
 					image.PutPixel(w,h,fin_color);
 				}
             }
@@ -620,7 +620,7 @@ public class ParallelCamera :Camera
 
 public interface SurfaceProperties
 {
-    public Material Material { get; set; }
+    public ReflectanceModel Material { get; set; }
     public float[]? Intersection(Ray ray);
 	public Vector3d SurfaceNormal(Ray ray);
 }
@@ -631,14 +631,14 @@ public interface SurfaceProperties
 public class SceneObject:SceneEntity,SurfaceProperties
 {
 	public Vector3d Color { get; set; }
-	public Material Material { get; set; }
+	public ReflectanceModel Material { get; set; }
 	public SceneObject()
 	{
 		Color = new Vector3d(255, 0, 0);
 		Material = new Phong(0.2f,0.8f,0.2f,100);
 		Position = new Vector3d(0,0,0);
 	}
-	public SceneObject(Vector3d color,Material material)
+	public SceneObject(Vector3d color,ReflectanceModel material)
 	{
 		Color= color;
 		Material = material;
@@ -672,7 +672,7 @@ public class Sphere:SceneObject
 	/// <param name="color"></param>
 	/// <param name="Pos"></param>
 	/// <param name="R"></param>
-	public Sphere(Vector3d color, Vector3d Pos,Material material,float R) : base(color,material)
+	public Sphere(Vector3d color, Vector3d Pos,ReflectanceModel material,float R) : base(color,material)
 	{
 		Radius = R;
 		Position = Pos;
@@ -748,7 +748,7 @@ public class Plane : SceneObject, SurfaceProperties
 	/// </summary>
 	/// <param name="Point"></param>
 	/// <param name="Normal"></param>
-	public Plane(Vector3d Point,Vector3d Normal,Vector3d Color,Material Material)
+	public Plane(Vector3d Point,Vector3d Normal,Vector3d Color,ReflectanceModel Material)
 	{
 		this.Normal = Normal;
 		this.Material = Material;
@@ -802,7 +802,7 @@ public class Box:SceneObject,SurfaceProperties
 	{
 
 	}
-	public Box(Vector3d color,Material material):base(color,material)
+	public Box(Vector3d color,ReflectanceModel material):base(color,material)
 	{
 
 	}
@@ -822,7 +822,7 @@ public class Cylinder:SceneObject,SurfaceProperties
 {
 	public float Radius,Height;
 
-	public Cylinder(Vector3d color,Material material,float Rad,float Hei,Vector3d Pos):base(color,material)
+	public Cylinder(Vector3d color,ReflectanceModel material,float Rad,float Hei,Vector3d Pos):base(color,material)
 	{
 		Radius = Rad;
 		Height = Hei;
