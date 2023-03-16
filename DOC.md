@@ -8,7 +8,6 @@ The program generates an image with a circle inside with the diameter of the siz
 the circle with the pixel height.  
 
 It generates another image based on path tracing, which is saved as PathTrace.pfm . The initial image can be modified from the config file. The default image has the same scene properties as the sample image for checkpoint 8. The reason the image is flipped is probably caused by how I use the coordinate systems. The default path traced image is below. 
-The lower plane cuts into the yellow ball on purpuse, to showcase there aren't problent with detecting the first intersection.
 
 ![pt_image](PathTrace.png "The default path traced image")
 
