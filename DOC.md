@@ -7,8 +7,7 @@ The ray tracer implementation for the course Photorealistic Graphics at Charles 
 The program generates an image with a circle inside with the diameter of the size of the shorter side, and interpolates between 2 colors inside 
 the circle with the pixel height.  
 
-It generates another image based on path tracing, which is saved as PathTrace.pfm . The initial image is based on the config file. It contains 
-5 planes, 3 spheres, a perspective camera set at [0,3,15], and looking at the origin, and 2 point light sources. The default path traced image is below. 
+It generates another image based on path tracing, which is saved as PathTrace.pfm . The initial image can be modified from the config file. The default image has the same scene properties as the sample image for checkpoint 8. The reason the image is flipped is probably caused by how I use the coordinate systems. The default path traced image is below. 
 The lower plane cuts into the yellow ball on purpuse, to showcase there aren't problent with detecting the first intersection.
 
 ![pt_image](PathTrace.png "The default path traced image")
