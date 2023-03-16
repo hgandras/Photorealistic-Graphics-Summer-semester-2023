@@ -27,9 +27,9 @@ in the scene. The last parameter is the field of view.
 
 __SceneConfig__: The scene config first declares the up direction in the world (this might be moved to the code as a constant scnen property, 
 sonce there is no need to change this). Next up is the definition of the objects that are making up the scene.
-Objects are the solids in the scene, and they can be put under the "Objects" entry. Currently there are two 
+Objects are the solids in the scene, and they can be put under the "Objects" field. Currently there are two 
 solids implemented, sphere, and infinite plane. Since both have different parameters that define them, they 
-can be found under different entries under the object. Below is an example of putting one sphere, and one plane in the scene. 
+can be found with different fields under the object. Below is an example of putting one sphere, and one plane in the scene. 
 
 ```json
 "Objects": {
@@ -67,15 +67,31 @@ The number defines how many of the defined objects will be displayed. If the num
 logged, in case leaving out objects was not our intention. Most of the attributes will be descibed later in more detail. Right now the only available material is
 phong reflection model. The way materials are assigned to an object will be modified when the  Another oject can be added, if we increase the number, and add the next object's attributes to the corresponding fields.  
 
-Last the light configurations are added. The ambient lighting with 3 values in a list, the positions of the point lights, and the 
-directions of the directional lights.
+The light configurations are defined in a similar way.
 ```json
-    "AmbientLighting": [ 1, 1, 1 ],
-    "PointLightPositions": [
-      [ 5, 5, 0 ],
-      [-5,5,0]
-    ],
-    "DirectionalLightDirections": []
+   "AmbientLighting": [ 1, 1, 1 ],
+    "Lightings": {
+      "PointLights": {
+        "Number": 2,
+        "Positions": [
+          [ -10, 8, -6 ],
+          [ 1, 1, 1 ]
+        ],
+        "SpecularIntensities": [
+          [ 1, 1, 1 ],
+          [ 0.3, 0.3, 0.3 ]
+        ],
+        "DiffuseIntensities": [
+          [ 1, 1, 1 ],
+          [ 0.3, 0.3, 0.3 ]
+        ]
+      },
+      "DirectionalLights": {
+        "Number": 0,
+        "Directions": [],
+        "SpecularIntensities": [],
+        "DiffureIntensities": []
+      }
 ```
 __PlaneConfig__: The plane config has only 2 fields, which are the width and height.  
 ## Arguments 
