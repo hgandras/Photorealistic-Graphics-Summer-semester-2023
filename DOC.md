@@ -8,7 +8,10 @@ The program generates an image with a circle inside with the diameter of the siz
 the circle with the pixel height.  
 
 It generates another image based on path tracing, which is saved as PathTrace.pfm . The initial image is based on the config file. It contains 
-5 planes, 3 spheres, a perspective camera set at [0,3,15], and looking at the origin, and 2 point light sources.
+5 planes, 3 spheres, a perspective camera set at [0,3,15], and looking at the origin, and 2 point light sources. The default path traced image is below. 
+The lower plane cuts into the yellow ball on purpuse, to showcase there aren't problent with detecting the first intersection.
+
+![pt_image](PathTrace.png "The default path traced image")
 
 Right now modification of the scene is only possible through the config file, I plan to make modification available through
 the command line later.  
