@@ -96,18 +96,11 @@ public class Scene
 				logger.LogInformation("Scene object {} at position {} added.", so.GetType(), so.Position);
 				AddObject(so);
 			}
-			for(int i=0;i<config.SceneConfig.PointLightPositions.Count();i++)
+			foreach(LightSource ls in config.SceneConfig.LightSources)
 			{
-				PointLight new_light=new PointLight();
-				new_light.Position = ColorTools.ArrToV3d(config.SceneConfig.PointLightPositions[i]);
-				LightSources.Add(new_light);
+				logger.LogInformation("Light source {} added to scene",ls.GetType());
+				AddLightSource(ls);
 			}
-            for (int i = 0; i < config.SceneConfig.DirectionalLightDirections.Count(); i++)
-            {
-                DirectionalLight new_light = new DirectionalLight();
-                new_light.Direction = ColorTools.ArrToV3d(config.SceneConfig.DirectionalLightDirections[i]);
-                LightSources.Add(new_light);
-            }
 			logger.LogInformation("Scene initialized with {} objects, and {} light sources", ObjectCount,LightSourceCount);
         }
 		catch(IndexOutOfRangeException)
@@ -167,6 +160,11 @@ public class Scene
                 LightSources.Add(new_light_source);
                 break;
         }
+	}
+
+	public void AddLightSource(LightSource ls)
+	{
+		LightSources.Add(ls);
 	}
 
 	/// <summary>

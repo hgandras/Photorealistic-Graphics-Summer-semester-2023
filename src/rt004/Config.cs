@@ -71,6 +71,7 @@ public class SceneConfig
     public float[] WorldUpDirection { get; set; }
 
     public readonly List<SceneObject> SceneObjects=new List<SceneObject>();
+    public readonly List<LightSource> LightSources = new List<LightSource>();
     public void Init()
     {
         try
@@ -94,6 +95,26 @@ public class SceneConfig
                                 , ColorTools.ArrToV3d(Objects.Planes.Colors[i])
                                 , new Phong(Objects.Spheres.Materials[i][0], Objects.Spheres.Materials[i][1], Objects.Spheres.Materials[i][2], Objects.Spheres.Materials[i][3])
                                 ));
+            }
+            if (Lightings.PointLights.Number != Lightings.PointLights.Positions.Count())
+                logger.LogWarning("Number of denoted point lightings is different than number of positions!");
+            for (int i=0; i<Lightings.PointLights.Number;i++)
+            {
+                LightSources.Add(new PointLight(
+                    ColorTools.ArrToV3d(Lightings.PointLights.Positions[i]), 
+                    ColorTools.ArrToV3d(Lightings.PointLights.DiffuseIntensities[i]),
+                    ColorTools.ArrToV3d(Lightings.PointLights.SpecularIntensities[i])
+                    ));
+            }
+            if(Lightings.DirectionalLights.Number != Lightings.DirectionalLights.Directions.Count())
+                logger.LogWarning("Number of denoted point lightings is different than number of positions!");
+            for (int i = 0; i < Lightings.DirectionalLights.Number; i++)
+            {
+                LightSources.Add(new PointLight(
+                    ColorTools.ArrToV3d(Lightings.DirectionalLights.Directions[i]),
+                    ColorTools.ArrToV3d(Lightings.DirectionalLights.DiffuseIntensities[i]),
+                    ColorTools.ArrToV3d(Lightings.DirectionalLights.SpecularIntensities[i])
+                    ));
             }
         }
         catch (IndexOutOfRangeException)
@@ -130,7 +151,32 @@ public class SceneConfig
         public PlaneObjects Planes { get; set; }
 
     }
+    public class Lights
+    {
+        public class PointLighings
+        {
+            public int Number { get; set; }
+            public List<float[]> Positions { get; set; }
+            public List<float[]> SpecularIntensities { get; set; }
+            public List<float[]> DiffuseIntensities { get; set; }
+            
+        }
+
+        public class DirectionalLightings
+        {
+            public int Number { get; set; }
+            public List<float[]> Directions { get; set; }
+            public List<float[]> SpecularIntensities { get; set; }
+            public List<float[]> DiffuseIntensities { get; set; }
+        }
+        public PointLighings PointLights { get; set; }
+        public DirectionalLightings DirectionalLights { get; set; }
+
+
+
+    }
     public Obj Objects { get; set; }
+    public Lights Lightings { get; set; }
     
     public List<float[]> PointLightPositions { get; set; }
     public List<float[]> DirectionalLightDirections { get; set; }
