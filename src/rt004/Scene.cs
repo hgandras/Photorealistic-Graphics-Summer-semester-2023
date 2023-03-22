@@ -7,6 +7,7 @@ using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using OpenTK.Mathematics;
 using Util;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace rt004;
 
@@ -37,14 +38,23 @@ namespace rt004;
  *		 camera's system.
  */
 
+
+
 public class Scene
 {
 	//Some scene properties
 	public Vector3d WorldUpDirection;
     public Vector3d AmbientLighting;
+	public Vector3d BackgroundColor;
     public ProjectionPlane Plane;
     public int PlaneWidthPx;
     public int PlaneHeightPx;
+	public float Kr = 0.6f;
+	public float Kl = 1.0f;
+	public int maxDepth = 8;
+
+
+	
     public int ObjectCount { get { return Objects.Count(); } }
     public int CamCount { get { return Cameras.Count(); } }
 	public int LightSourceCount { get { return LightSources.Count(); } }
@@ -89,6 +99,7 @@ public class Scene
 		AmbientLighting =ColorTools.ArrToV3d(config.SceneConfig.AmbientLighting);
         Plane = new ProjectionPlane(config.PlaneConfig);
 		DisplayShadows = config.SceneConfig.Shadows;
+		BackgroundColor = ColorTools.ArrToV3d(config.SceneConfig.BackgroundColor);
 
 		//Add scene elements based on properties
 		try
@@ -111,7 +122,6 @@ public class Scene
 			logger.LogWarning("Some scene object's properties were not defined, some SceneEnities are added with default parameters");
 			Environment.Exit(1);
 		}
-		
 	}
 
 	/// <summary>
@@ -141,7 +151,6 @@ public class Scene
 
         }
     }
-
 	public void AddObject(SceneObject scene_object)
 	{
 		Objects.Add(scene_object);
@@ -221,34 +230,49 @@ public class Scene
                 ray.Origin = Cam.Position;
                 ray.Direction = ray.Direction = Vector3d.Normalize((Matrix4d.Invert(Cam.CameraTransformMatrix) * new Vector4d(ray.Direction, 1)).Xyz - ray.Origin);
 
-                for (int i=0;i<Objects.Count();i++)
-				{
-					//If the ray intersects the object, set pixel color value to the object's value, else black.
-					float[]? intersections = Objects[i].Intersection(ray);
-					if (intersections != null)
-					{
-                        ray.Intersections.Add(Objects[i], intersections);
-					}
-				}
-				SceneObject? sO = ray.FirstIntersectedObject;
-				if (sO == null)
-					image.PutPixel(w, h, new float[] { 0.1f,0.2f,0.3f});
-				else
-				{
-					List<SceneObject> otherObjects = new List<SceneObject>(Objects);
-					otherObjects.Remove(sO);
-					//Calculate reflected color values
-					Vector3d pixel_color = new Vector3d();
-					if(DisplayShadows)
-						pixel_color = sO.Material.GetReflectedColor(ray, AmbientLighting, LightSources,otherObjects);
-					else
-						pixel_color= sO.Material.GetReflectedColor(ray, AmbientLighting, LightSources);
-                    float[] fin_color = ColorTools.V3dToArr(pixel_color);
-					image.PutPixel(w,h,fin_color);
-				}
+				int Depth = 0;
+				Vector3d pxColor = RecursiveRayTrace(ray,Depth);
+				image.PutPixel(w, h,ColorTools.V3dToArr(pxColor));
             }
 		}
 		return image;
+	}
+
+	private Vector3d RecursiveRayTrace(Ray ray,int depth)
+	{
+        Vector3d pixel_color = Vector3d.Zero;
+        for (int i = 0; i < Objects.Count(); i++)
+        {
+			//Calculate ray intersections
+            float[]? intersections = Objects[i].Intersection(ray);
+            if (intersections != null)
+            {
+                ray.Intersections.Add(Objects[i], intersections);
+            }
+        }
+        SceneObject? sO = ray.FirstIntersectedObject;
+		if (sO == null)
+			return BackgroundColor;
+		else
+		{
+            //Calculate reflected color values
+            if (DisplayShadows)
+			{
+				List<SceneObject> otherObjects = new List<SceneObject>(Objects);
+				otherObjects.Remove(sO);
+				pixel_color += Kl * sO.Material.GetReflectedColor(ray, AmbientLighting, LightSources, otherObjects);
+			}
+			else
+				pixel_color += Kl * sO.Material.GetReflectedColor(ray, AmbientLighting, LightSources);
+
+			if (depth++ >= maxDepth)
+				return pixel_color;
+			
+            Vector3d ReflectedRayDirection = 2 * Vector3d.Dot(ray.Direction, sO.SurfaceNormal(ray)) * sO.SurfaceNormal(ray) - ray.Direction;
+            Ray ReflectedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), -ReflectedRayDirection);
+            pixel_color += Kr * RecursiveRayTrace(ReflectedRay, depth);
+		}
+		return pixel_color;
 	}
 }
 
@@ -703,15 +727,15 @@ public class Sphere:SceneObject
 		{
 			float t1 = (float)((-b - Math.Sqrt(discriminant)) / 2 * a);
 			float t2 = (float)((-b + Math.Sqrt(discriminant)) / 2 * a);
-			if (t1 >0)
+			if (t1 >Globals.ROUNDING_ERR)
 				intersectionPoints.Add(t1);
-			if (t2 > 0)
+			if (t2 > Globals.ROUNDING_ERR)
 				intersectionPoints.Add(t2);
 		}
 		else if (discriminant == 0)
 		{
 			float t = (float)(-b / 2 * a);
-			if (t > 0)
+			if (t > Globals.ROUNDING_ERR)
 				intersectionPoints.Add(t);
 			
 		}
@@ -731,7 +755,8 @@ public class Sphere:SceneObject
 		if (!ray.Intersections.ContainsKey(this))
 		{
 			float[]? intersections = Intersection(ray);
-			ray.Intersections.Add(this, intersections);
+			if(intersections!=null)
+				ray.Intersections.Add(this, intersections);
 		}
 		Vector3d first_intersection=ray.GetRayPoint(ray.FirstIntersection);
 		return Vector3d.Normalize(Center - first_intersection);
@@ -772,14 +797,13 @@ public class Plane : SceneObject, SurfaceProperties
     public override float[]? Intersection(Ray ray)
     {
         float denominator = (float)Vector3d.Dot(ray.Direction, SurfaceNormal(ray));
-        if (denominator >0 )
+        if (denominator >Globals.ROUNDING_ERR )
         {
             float numerator = (float)Vector3d.Dot((Position - ray.Origin), SurfaceNormal(ray));
-			if(numerator>0)
+			if(numerator/denominator>Globals.ROUNDING_ERR)
                 return new float[] { numerator / denominator };
 		}
         return null;
-
     }
 
     /// <summary>
@@ -791,11 +815,7 @@ public class Plane : SceneObject, SurfaceProperties
 	{
         //If the angle is larger than 90 degrees, that means the ray is on that side of the 
         //plane 
-        /*if (!ray.Intersections.ContainsKey(this))
-        {
-            float[]? intersections = Intersection(ray);
-            ray.Intersections.Add(this, intersections);
-        }*/
+        
         double angle = Vector3d.CalculateAngle(Normal, ray.Direction);
 		if (angle > Math.PI / 2.0 && angle<-Math.PI/2.0)
 			return Normal;

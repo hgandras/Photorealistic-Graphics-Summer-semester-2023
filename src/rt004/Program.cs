@@ -11,6 +11,12 @@ using Microsoft.Extensions.Logging.Configuration;
 
 namespace rt004;
 
+
+public class Globals
+{
+    public const float ROUNDING_ERR = 1e-5f;
+}
+
 internal class Program
 {
   

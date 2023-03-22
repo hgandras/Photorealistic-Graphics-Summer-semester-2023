@@ -20,7 +20,7 @@ public class Phong:ReflectanceModel
 {
     public float k_s,k_d,k_a,alpha;
 
-    public Phong(float k_s, float k_d, float k_a, float alpha)
+    public Phong(float k_a, float k_d, float k_s, float alpha)
     {
         this.k_s = k_s;
         this.k_d = k_d;
@@ -74,7 +74,6 @@ public class Phong:ReflectanceModel
                     continue; 
             }
             
-
             Vector3d incoming_light_direction = light.CastRay(intersection_point).Direction;
             Vector3d refleced_light_direction = 2 * Vector3d.Dot(incoming_light_direction, surface_normal) * surface_normal - incoming_light_direction;
 
@@ -112,6 +111,5 @@ public class Phong2 : Material
 public class Phong3 : Material
 {
     public ReflectanceModel getReflectance { get { return new Phong(0.4f, 0.6f, 0.1f, 80); } }
-
 
 }

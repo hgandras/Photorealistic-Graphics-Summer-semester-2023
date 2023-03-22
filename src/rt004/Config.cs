@@ -71,6 +71,8 @@ public class SceneConfig
     public float[] WorldUpDirection { get; set; }
     public bool Shadows { get; set; }
 
+    public float[] BackgroundColor { get; set; }
+
     public readonly List<SceneObject> SceneObjects=new List<SceneObject>();
     public readonly List<LightSource> LightSources = new List<LightSource>();
     public void Init()
