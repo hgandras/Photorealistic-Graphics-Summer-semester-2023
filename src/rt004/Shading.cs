@@ -71,8 +71,7 @@ public class Phong:ReflectanceModel
                         shadowRay.Intersections.Add(obj,intersections);
                 }
                 if (shadowRay.FirstIntersectedObject != null)
-                    continue;
-                
+                    continue; 
             }
             
 

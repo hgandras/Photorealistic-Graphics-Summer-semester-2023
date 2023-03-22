@@ -575,8 +575,6 @@ public class PerspectiveCamera:Camera
 	/// <exception cref="NotImplementedException"></exception>
 	public override Ray CastRay(ProjectionPlane plane, int px_x, int px_y)
 	{
-		
-	
         double x = px_x * plane.WPixelStep + plane.WPixelStep / 2 - plane.W / 2;
 		double y = px_y * plane.h_pixel_step + plane.h_pixel_step / 2 - plane.h / 2;
 		//The intersected point in the plane in the camera system
@@ -615,7 +613,6 @@ public class ParallelCamera :Camera
         throw new NotImplementedException();
     }
 }
-
 
 public interface SurfaceProperties
 {
@@ -755,7 +752,7 @@ public class Plane : SceneObject, SurfaceProperties
 	/// <param name="Normal"></param>
 	public Plane(Vector3d Point,Vector3d Normal,Vector3d Color,ReflectanceModel Material)
 	{
-		this.Normal = Normal;
+		this.Normal =Vector3d.Normalize(Normal);
 		this.Material = Material;
 		this.Color = Color;
 		Position = Point;
@@ -768,33 +765,33 @@ public class Plane : SceneObject, SurfaceProperties
 	/// <returns>The parameters t of the ray in the intersection points</returns>
     public override float[]? Intersection(Ray ray)
     {
-		float numerator = (float)Vector3d.Dot((Position - ray.Origin), Normal);
-		float denominator = (float)Vector3d.Dot(ray.Direction, Normal);
-        if (denominator== 0 || numerator == 0)
-			return null;
+        float denominator = (float)Vector3d.Dot(ray.Direction, SurfaceNormal(ray));
+        if (denominator >0 )
+        {
+            float numerator = (float)Vector3d.Dot((Position - ray.Origin), SurfaceNormal(ray));
+			if(numerator>0)
+                return new float[] { numerator / denominator };
+		}
+        return null;
 
-		if (numerator / denominator < 0)
-			return null;
-
-        return new float[] { numerator / denominator };
     }
 
-	/// <summary>
-	/// Returns the normal of the plane in the direction the ray intersects it.
-	/// </summary>
-	/// <param name="point"></param>
-	/// <returns></returns>
+    /// <summary>
+    /// Returns the normal of the plane in the direction the ray intersects it.
+    /// </summary>
+    /// <param name="point"></param>
+    /// <returns></returns>
     public override Vector3d SurfaceNormal(Ray ray)
 	{
         //If the angle is larger than 90 degrees, that means the ray is on that side of the 
-        //plane.
-        if (!ray.Intersections.ContainsKey(this))
+        //plane 
+        /*if (!ray.Intersections.ContainsKey(this))
         {
             float[]? intersections = Intersection(ray);
             ray.Intersections.Add(this, intersections);
-        }
+        }*/
         double angle = Vector3d.CalculateAngle(Normal, ray.Direction);
-		if (angle > Math.PI / 2)
+		if (angle > Math.PI / 2.0 && angle<-Math.PI/2.0)
 			return Normal;
 		return -Normal;
 	}
