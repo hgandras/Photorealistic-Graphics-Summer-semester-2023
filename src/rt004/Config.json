@@ -11,6 +11,7 @@
   },
   "SceneConfig": {
     "WorldUpDirection": [ 0, 1, 0 ],
+    "Shadows": true,
     "Objects": {
       "Spheres": {
         "Number":3 ,

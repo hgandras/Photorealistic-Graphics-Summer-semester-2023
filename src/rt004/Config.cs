@@ -69,6 +69,7 @@ public class SceneConfig
 {
     public ILogger logger = Logging.CreateLogger<SceneConfig>();
     public float[] WorldUpDirection { get; set; }
+    public bool Shadows { get; set; }
 
     public readonly List<SceneObject> SceneObjects=new List<SceneObject>();
     public readonly List<LightSource> LightSources = new List<LightSource>();

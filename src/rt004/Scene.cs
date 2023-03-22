@@ -53,6 +53,7 @@ public class Scene
     public LightSource LightSource;
     public Camera Cam;
     public SceneObject Object;
+	public bool DisplayShadows;
 
 	//Private lists for storin all scene entities
 	private List<SceneObject> Objects;
@@ -87,6 +88,7 @@ public class Scene
 		WorldUpDirection = ColorTools.ArrToV3d(config.SceneConfig.WorldUpDirection); 
 		AmbientLighting =ColorTools.ArrToV3d(config.SceneConfig.AmbientLighting);
         Plane = new ProjectionPlane(config.PlaneConfig);
+		DisplayShadows = config.SceneConfig.Shadows;
 
 		//Add scene elements based on properties
 		try
@@ -235,9 +237,13 @@ public class Scene
 				{
 					List<SceneObject> otherObjects = new List<SceneObject>(Objects);
 					otherObjects.Remove(sO);
-                    //Calculate reflected color values
-                    Vector3d pixel_color = sO.Material.GetReflectedColor(ray, AmbientLighting, LightSources,otherObjects);
-					float[] fin_color = ColorTools.V3dToArr(pixel_color);
+					//Calculate reflected color values
+					Vector3d pixel_color = new Vector3d();
+					if(DisplayShadows)
+						pixel_color = sO.Material.GetReflectedColor(ray, AmbientLighting, LightSources,otherObjects);
+					else
+						pixel_color= sO.Material.GetReflectedColor(ray, AmbientLighting, LightSources);
+                    float[] fin_color = ColorTools.V3dToArr(pixel_color);
 					image.PutPixel(w,h,fin_color);
 				}
             }
