@@ -233,8 +233,10 @@ public class Scene
 					image.PutPixel(w, h, new float[] { 0.1f,0.2f,0.3f});
 				else
 				{
-					//Calculate reflected color values
-					Vector3d pixel_color = sO.Material.GetReflectedColor(ray, AmbientLighting, LightSources);
+					List<SceneObject> otherObjects = new List<SceneObject>(Objects);
+					otherObjects.Remove(sO);
+                    //Calculate reflected color values
+                    Vector3d pixel_color = sO.Material.GetReflectedColor(ray, AmbientLighting, LightSources,otherObjects);
 					float[] fin_color = ColorTools.V3dToArr(pixel_color);
 					image.PutPixel(w,h,fin_color);
 				}
@@ -374,8 +376,7 @@ public class Ray
 	/// <param name="direction"></param>
 	public Ray(Vector3d origin, Vector3d direction)
 	{
-		
-		Origin =origin==Vector3d.Zero? origin:Vector3d.Normalize(origin);
+		Origin = origin;
 		Direction = direction==Vector3d.Zero?direction:Vector3d.Normalize(direction);
 	}
 
@@ -693,20 +694,26 @@ public class Sphere:SceneObject
 
 		double discriminant = b * b - 4 * a * c;
 
+		List<float> intersectionPoints = new List<float>();
+
 		if (discriminant > 0)
 		{
 			float t1 = (float)((-b - Math.Sqrt(discriminant)) / 2 * a);
 			float t2 = (float)((-b + Math.Sqrt(discriminant)) / 2 * a);
-			
-			return new float[] { t1, t2 };
+			if (t1 >0)
+				intersectionPoints.Add(t1);
+			if (t2 > 0)
+				intersectionPoints.Add(t2);
 		}
 		else if (discriminant == 0)
 		{
 			float t = (float)(-b / 2 * a);
-			if (t < 0)
-				return null;
-			return new float[] { t};
-		} 
+			if (t > 0)
+				intersectionPoints.Add(t);
+			
+		}
+		if (intersectionPoints.Count() > 0)
+			return intersectionPoints.ToArray();
         return null;
     }
 
@@ -846,7 +853,7 @@ public class Cylinder:SceneObject,SurfaceProperties
 /// </summary>
 public interface LightSource
 {
-	public Ray GetRay(Vector3d point);
+	public Ray CastRay(Vector3d point);
 	public Vector3d DiffuseLighting { get; set; }
 	public Vector3d SpecularLighting { get; set; }
 }
@@ -872,11 +879,11 @@ public class PointLight:LightSource
 	}
 
 	/// <summary>
-	/// Calculates the 
+	/// Casts a ray towards the desired point from the light source.
 	/// </summary>
 	/// <param name="point"></param>
 	/// <returns></returns>
-	public Ray GetRay(Vector3d point)
+	public Ray CastRay(Vector3d point)
 	{
 		return new Ray(Position,point-Position);
     }
@@ -894,7 +901,7 @@ public class DirectionalLight:LightSource
         SpecularLighting = new Vector3d(1, 1, 1);
     }
 
-    public Ray GetRay(Vector3d point)
+    public Ray CastRay(Vector3d point)
 	{
 		return new Ray(new Vector3d(0, 0, 0), new Vector3d(0, 0, 0));
 	}

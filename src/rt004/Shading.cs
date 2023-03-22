@@ -3,14 +3,17 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Security.AccessControl;
 using System.Text;
 using System.Threading.Tasks;
+using static rt004.SceneConfig;
 
 namespace rt004;
 
 public abstract class ReflectanceModel
 {
-    public abstract Vector3d GetReflectedColor(Ray ray, Vector3d ambient_lighting, List<LightSource> light);
+    public abstract Vector3d GetReflectedColor(Ray ray, Vector3d ambient_lighting, List<LightSource> light,List<SceneObject> objects=null);
+
 }
 
 public class Phong:ReflectanceModel
@@ -27,30 +30,53 @@ public class Phong:ReflectanceModel
 
     /// <summary>
     /// Calculates the reflected color value based on the phong model. The input values must be in the 
-    /// world coordinate system.
+    /// world coordinate system. If objects are added as parameter, the shading will calculate their shadows.
     /// </summary>
     /// <param name="ray">The ray shot through the pixel to be evaluated</param>
     /// <param name="ambient_lighting">The color value of the ambient lighting</param>
     /// <param name="light">The light sources in the scene.</param>
     /// <returns></returns>
-    public override Vector3d GetReflectedColor(Ray ray, Vector3d ambient_lighting,List<LightSource> light_sources)
+    public override Vector3d GetReflectedColor(Ray ray, Vector3d ambient_lighting,List<LightSource> light_sources,List<SceneObject> objects=null)
     {
-        //TODO: Implement for multiple light sources.
         if (ray.FirstIntersectedObject==null || light_sources.Count()==0)//If the object is not intersected or there are                                                                
-            return ambient_lighting;                            //no light sources in the scene, the pixel value
-                                                                //is just the ambient lighting
+            return ambient_lighting;                                     //no light sources in the scene, the pixel value
+                                                                         //is just the ambient lighting
         Vector3d intersection_point = ray.GetRayPoint(ray.FirstIntersection);
         Vector3d surface_normal = ray.FirstIntersectedObject.SurfaceNormal(ray);
 
         Vector3d view_direction=ray.Direction;
 
-        float[] result_color = new float[3];
         Vector3d ambient_component = ambient_lighting * k_a;
         Vector3d diff_spec_comps=Vector3d.Zero;
 
+        //TODO: For shadows cast a ray from the light-object intersection back to the lightsource, and if the ray intersects 
+        //an object on its way, don't count that specific lightsource's contribution to the final value. Add the
+        //list of objects as input as well, and for the shadow ray calculate all intersections. If it intersects any 
+        //other object than the first intersection of the ray variable, don't count the lightsource.
+
+
+       // Console.WriteLine("asfdgfhg");
         foreach (LightSource light in light_sources)
         {
-            Vector3d incoming_light_direction = light.GetRay(intersection_point).Direction;
+            if(objects!=null)
+            {
+                //Since the ray contains the direction normalized, we only have to check if the ray intersects 
+                //any objects between the light source, and the object.
+                Ray shadowRay = new Ray(intersection_point, -light.CastRay(intersection_point).Direction);
+
+                foreach (SceneObject obj in objects)
+                {
+                    float[]? intersections = obj.Intersection(shadowRay);
+                    if (intersections!=null)
+                        shadowRay.Intersections.Add(obj,intersections);
+                }
+                if (shadowRay.FirstIntersectedObject != null)
+                    continue;
+                
+            }
+            
+
+            Vector3d incoming_light_direction = light.CastRay(intersection_point).Direction;
             Vector3d refleced_light_direction = 2 * Vector3d.Dot(incoming_light_direction, surface_normal) * surface_normal - incoming_light_direction;
 
             Vector3d diffuse_component = k_d * Math.Max(Vector3d.Dot(incoming_light_direction, surface_normal), 0.0) * light.DiffuseLighting;
@@ -62,6 +88,8 @@ public class Phong:ReflectanceModel
 
         return final_color;
     }
+
+   
 }
 
 
