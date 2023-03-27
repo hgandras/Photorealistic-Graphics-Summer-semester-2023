@@ -113,3 +113,8 @@ public class Phong3 : Material
     public ReflectanceModel getReflectance { get { return new Phong(0.4f, 0.6f, 0.1f, 80); } }
 
 }
+
+public class Phong4:Material
+{
+    public ReflectanceModel getReflectance { get { return new Phong(1, 1, 1, 150); } }
+}

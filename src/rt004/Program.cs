@@ -15,6 +15,7 @@ namespace rt004;
 public class Globals
 {
     public const float ROUNDING_ERR = 1e-5f;
+    public const string ASSEMBLY_NAME = "rt004.";
 }
 
 internal class Program

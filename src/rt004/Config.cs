@@ -83,20 +83,23 @@ public class SceneConfig
                 logger.LogWarning("Number of denoted spheres is different than number of positions!");
             for (int i = 0; i < Objects.Spheres.Number; i++)
             {
+
+                Material material = Activator.CreateInstance(Type.GetType(Globals.ASSEMBLY_NAME+Objects.Spheres.Materials[i])) as Material;
                 SceneObjects.Add(new Sphere(
                                 ColorTools.ArrToV3d(Objects.Spheres.Colors[i]),
                                 ColorTools.ArrToV3d(Objects.Spheres.Positions[i])
-                                , new Phong(Objects.Spheres.Materials[i][0], Objects.Spheres.Materials[i][1], Objects.Spheres.Materials[i][2], Objects.Spheres.Materials[i][3])
+                                , material.getReflectance
                                 , Objects.Spheres.Radiuses[i]));
             }
             if (Objects.Planes.Number != Objects.Planes.Positions.Count())
                 logger.LogWarning("Number of denoted planes is different than number of positions!");
             for (int i = 0; i < Objects.Planes.Number; i++)
             {
+                Material material = Activator.CreateInstance(Type.GetType(Globals.ASSEMBLY_NAME + Objects.Spheres.Materials[i])) as Material;
                 SceneObjects.Add(new Plane(ColorTools.ArrToV3d(Objects.Planes.Positions[i])
                                 , ColorTools.ArrToV3d(Objects.Planes.Normals[i])
                                 , ColorTools.ArrToV3d(Objects.Planes.Colors[i])
-                                , new Phong(Objects.Spheres.Materials[i][0], Objects.Spheres.Materials[i][1], Objects.Spheres.Materials[i][2], Objects.Spheres.Materials[i][3])
+                                , material.getReflectance                               
                                 ));
             }
             if (Lightings.PointLights.Number != Lightings.PointLights.Positions.Count())
@@ -138,7 +141,7 @@ public class SceneConfig
             public string Instance = "Sphere";
             public List<float[]> Positions { get; set; }
             public List<float[]> Colors { get; set; }
-            public List<float[]> Materials { get; set; }
+            public List<string> Materials { get; set; }
             public float[] Radiuses { get; set; } 
         }
         public class PlaneObjects
@@ -148,7 +151,7 @@ public class SceneConfig
             public List<float[]> Normals { get; set; }
             public List<float[]> Positions { get; set; }
             public List<float[]> Colors { get; set; }
-            public List<float[]> Materials { get; set; }
+            public List<string> Materials { get; set; }
         }
         public SphereObjects Spheres { get; set; }
         public PlaneObjects Planes { get; set; }
@@ -161,8 +164,7 @@ public class SceneConfig
             public int Number { get; set; }
             public List<float[]> Positions { get; set; }
             public List<float[]> SpecularIntensities { get; set; }
-            public List<float[]> DiffuseIntensities { get; set; }
-            
+            public List<float[]> DiffuseIntensities { get; set; }   
         }
 
         public class DirectionalLightings
@@ -174,8 +176,6 @@ public class SceneConfig
         }
         public PointLighings PointLights { get; set; }
         public DirectionalLightings DirectionalLights { get; set; }
-
-
 
     }
     public Obj Objects { get; set; }
