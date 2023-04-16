@@ -49,9 +49,8 @@ public class Scene
     public ProjectionPlane Plane;
     public int PlaneWidthPx;
     public int PlaneHeightPx;
-	public float Kr = 0.6f;
-	public float Kl = 1.0f;
-	public int maxDepth = 8;
+	public float Kr = 0.7f;
+	public int maxDepth;
 
 
 	
@@ -99,6 +98,7 @@ public class Scene
 		AmbientLighting =ColorTools.ArrToV3d(config.SceneConfig.AmbientLighting);
         Plane = new ProjectionPlane(config.PlaneConfig);
 		DisplayShadows = config.SceneConfig.Shadows;
+		maxDepth = config.SceneConfig.MaxDepth;
 		BackgroundColor = ColorTools.ArrToV3d(config.SceneConfig.BackgroundColor);
 
 		//Add scene elements based on properties
@@ -238,6 +238,12 @@ public class Scene
 		return image;
 	}
 
+	/// <summary>
+	/// 
+	/// </summary>
+	/// <param name="ray"></param>
+	/// <param name="depth"></param>
+	/// <returns></returns>
 	private Vector3d RecursiveRayTrace(Ray ray,int depth)
 	{
         Vector3d pixel_color = Vector3d.Zero;
@@ -255,22 +261,31 @@ public class Scene
 			return BackgroundColor;
 		else
 		{
+			//TODO: If transparent create refractions, and approximate the reflected light more accurately (either by fresnel term, or in case of phong with k_s)
+
             //Calculate reflected color values
             if (DisplayShadows)
 			{
 				List<SceneObject> otherObjects = new List<SceneObject>(Objects);
 				otherObjects.Remove(sO);
-				pixel_color += Kl * sO.Material.GetReflectedColor(ray, AmbientLighting, LightSources, otherObjects);
+				pixel_color += sO.Material.getReflectance.GetReflectedColor(ray, AmbientLighting, LightSources, otherObjects);
 			}
 			else
-				pixel_color += Kl * sO.Material.GetReflectedColor(ray, AmbientLighting, LightSources);
+				pixel_color += sO.Material.getReflectance.GetReflectedColor(ray, AmbientLighting, LightSources);
 
-			if (depth++ >= maxDepth)
+			if (depth++ >= maxDepth )
 				return pixel_color;
-			
-            Vector3d ReflectedRayDirection = 2 * Vector3d.Dot(ray.Direction, sO.SurfaceNormal(ray)) * sO.SurfaceNormal(ray) - ray.Direction;
-            Ray ReflectedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), -ReflectedRayDirection);
-            pixel_color += Kr * RecursiveRayTrace(ReflectedRay, depth);
+
+			if (sO.Material.Glossy)
+			{
+				Vector3d ReflectedRayDirection = 2 * Vector3d.Dot(ray.Direction, sO.SurfaceNormal(ray)) * sO.SurfaceNormal(ray) - ray.Direction;
+				Ray ReflectedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), -ReflectedRayDirection);
+				pixel_color += Kr* RecursiveRayTrace(ReflectedRay, depth);
+			}
+			if(sO.Material.Transparent)
+			{
+				//TODO: Cast ray for refraction
+			}
 		}
 		return pixel_color;
 	}
@@ -646,7 +661,7 @@ public class ParallelCamera :Camera
 
 public interface SurfaceProperties
 {
-    public ReflectanceModel Material { get; set; }
+    public Material Material { get; set; }
     public float[]? Intersection(Ray ray);
 	public Vector3d SurfaceNormal(Ray ray);
 }
@@ -657,14 +672,14 @@ public interface SurfaceProperties
 public class SceneObject:SceneEntity,SurfaceProperties
 {
 	public Vector3d Color { get; set; }
-	public ReflectanceModel Material { get; set; }
+	public Material Material { get; set; }
 	public SceneObject()
 	{
 		Color = new Vector3d(255, 0, 0);
-		Material = new Phong(0.2f,0.8f,0.2f,100);
+		Material = new Phong1();
 		Position = new Vector3d(0,0,0);
 	}
-	public SceneObject(Vector3d color,ReflectanceModel material)
+	public SceneObject(Vector3d color,Material material)
 	{
 		Color= color;
 		Material = material;
@@ -698,7 +713,7 @@ public class Sphere:SceneObject
 	/// <param name="color"></param>
 	/// <param name="Pos"></param>
 	/// <param name="R"></param>
-	public Sphere(Vector3d color, Vector3d Pos,ReflectanceModel material,float R) : base(color,material)
+	public Sphere(Vector3d color, Vector3d Pos,Material material,float R) : base(color,material)
 	{
 		Radius = R;
 		Position = Pos;
@@ -781,7 +796,7 @@ public class Plane : SceneObject, SurfaceProperties
 	/// </summary>
 	/// <param name="Point"></param>
 	/// <param name="Normal"></param>
-	public Plane(Vector3d Point,Vector3d Normal,Vector3d Color,ReflectanceModel Material)
+	public Plane(Vector3d Point,Vector3d Normal,Vector3d Color,Material Material)
 	{
 		this.Normal =Vector3d.Normalize(Normal);
 		this.Material = Material;
@@ -830,7 +845,7 @@ public class Box:SceneObject,SurfaceProperties
 	{
 
 	}
-	public Box(Vector3d color,ReflectanceModel material):base(color,material)
+	public Box(Vector3d color,Material material):base(color,material)
 	{
 
 	}
@@ -850,7 +865,7 @@ public class Cylinder:SceneObject,SurfaceProperties
 {
 	public float Radius,Height;
 
-	public Cylinder(Vector3d color,ReflectanceModel material,float Rad,float Hei,Vector3d Pos):base(color,material)
+	public Cylinder(Vector3d color,Material material,float Rad,float Hei,Vector3d Pos):base(color,material)
 	{
 		Radius = Rad;
 		Height = Hei;

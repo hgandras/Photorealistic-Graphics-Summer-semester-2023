@@ -13,7 +13,6 @@ namespace rt004;
 public abstract class ReflectanceModel
 {
     public abstract Vector3d GetReflectedColor(Ray ray, Vector3d ambient_lighting, List<LightSource> light,List<SceneObject> objects=null);
-
 }
 
 public class Phong:ReflectanceModel
@@ -86,8 +85,6 @@ public class Phong:ReflectanceModel
 
         return final_color;
     }
-
-   
 }
 
 
@@ -97,24 +94,49 @@ public class Phong:ReflectanceModel
 /// </summary>
 public interface Material
 {
+    public bool Glossy { get; }
+    public bool Transparent { get; }
     public ReflectanceModel getReflectance { get; }
 }
 
-public class Phong1:Material
-{
-    public ReflectanceModel getReflectance { get { return new Phong(0.2f, 0.8f, 0.1f, 10); } }
+public class Phong1 : Material
+{    
+
+    public bool Glossy{get{ return true; }}
+    public bool Transparent { get { return false; } }
+    public ReflectanceModel getReflectance { get { return new Phong(0.1f, 0.8f, 0.2f, 10); } }
 }
 public class Phong2 : Material
 {
-    public ReflectanceModel getReflectance { get { return new Phong(0.5f, 0.5f, 0.1f, 150); } }
+    public ReflectanceModel getReflectance { get { return new Phong(0.1f, 0.5f, 0.5f, 150); } }
+
+    public bool Glossy { get { return true; } }
+
+    public bool Transparent { get { return false; } }
 }
 public class Phong3 : Material
 {
-    public ReflectanceModel getReflectance { get { return new Phong(0.4f, 0.6f, 0.1f, 80); } }
+    public ReflectanceModel getReflectance { get { return new Phong(0.1f, 0.6f, 0.4f, 80); } }
 
+    public bool Glossy { get { return true; } }
+
+    public bool Transparent { get { return false; } }
 }
 
 public class Phong4:Material
 {
-    public ReflectanceModel getReflectance { get { return new Phong(1, 1, 1, 150); } }
+    public ReflectanceModel getReflectance { get { return new Phong(0.2f, 0.2f, 0.8f, 400); } }
+
+    public bool Glossy { get { return true; } }
+
+    public bool Transparent { get { return false; } }
+}
+
+public class Phong5:Material
+{
+    public ReflectanceModel getReflectance { get { return new Phong(0.1f, 0.6f, 0.4f, 80); } }
+
+    public bool Glossy { get { return true; } }
+
+    public bool Transparent { get { return false; } }
 }

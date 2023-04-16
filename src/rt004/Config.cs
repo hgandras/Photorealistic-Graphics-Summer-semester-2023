@@ -70,6 +70,7 @@ public class SceneConfig
     public ILogger logger = Logging.CreateLogger<SceneConfig>();
     public float[] WorldUpDirection { get; set; }
     public bool Shadows { get; set; }
+    public int MaxDepth { get; set; }
 
     public float[] BackgroundColor { get; set; }
 
@@ -88,7 +89,7 @@ public class SceneConfig
                 SceneObjects.Add(new Sphere(
                                 ColorTools.ArrToV3d(Objects.Spheres.Colors[i]),
                                 ColorTools.ArrToV3d(Objects.Spheres.Positions[i])
-                                , material.getReflectance
+                                , material
                                 , Objects.Spheres.Radiuses[i]));
             }
             if (Objects.Planes.Number != Objects.Planes.Positions.Count())
@@ -99,7 +100,7 @@ public class SceneConfig
                 SceneObjects.Add(new Plane(ColorTools.ArrToV3d(Objects.Planes.Positions[i])
                                 , ColorTools.ArrToV3d(Objects.Planes.Normals[i])
                                 , ColorTools.ArrToV3d(Objects.Planes.Colors[i])
-                                , material.getReflectance                               
+                                , material                              
                                 ));
             }
             if (Lightings.PointLights.Number != Lightings.PointLights.Positions.Count())

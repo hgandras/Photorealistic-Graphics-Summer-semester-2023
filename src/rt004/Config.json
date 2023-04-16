@@ -12,7 +12,8 @@
   "SceneConfig": {
     "WorldUpDirection": [ 0, 1, 0 ],
     "Shadows": true,
-    "BackgroundColor": [0.1,0.2,0.3],
+    "BackgroundColor": [ 0.1, 0.2, 0.3 ],
+    "MaxDepth": 8,
     "Objects": {
       "Spheres": {
         "Number":4 ,
@@ -34,7 +35,7 @@
           "Phong1",
           "Phong2",
           "Phong3",
-          "Phong2",
+          "Phong4",
           "Phong1"
         ],
         "Radiuses": [ 1, 0.6, 0.1, 0.5, 1 ]
@@ -51,7 +52,7 @@
           [ 0.9, 0.9, 0.9 ]
         ],
         "Materials": [
-          "Phong1"
+          "Phong5"
         ]
       }
     },
