@@ -32,6 +32,10 @@ internal class Program
         GeneralConfig generalConfig = config.GeneralConfig;
         logger.LogInformation("Config file loaded");
 
+        logger.LogInformation("Loading scene graph");
+        SceneGraph scenegraph = new SceneGraph("SceneGraph.json");
+        logger.LogInformation("Scene graph loaded!::))");
+
         int wid = config.PlaneConfig.Width;
         int hei = config.PlaneConfig.Height;
         string fileName = generalConfig.fileName;

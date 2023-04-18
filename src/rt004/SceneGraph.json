@@ -1,0 +1,43 @@
+{
+  "Tansformation": null,
+  "Obj": null,
+  "Parent": null,
+  "Children": [
+    {
+      "Transformation": "translate(1,1,1) rotateX(20)",
+      "Obj": null,
+      "Parent": null,
+      "Children": [
+        {
+          "Transformation": "translate(1,1,1) rotateX(20)",
+          "Obj": null,
+          "Parent": null,
+          "Children": null
+        },
+        {
+          "Transformation": "translate(1,1,1) rotateX(20)",
+          "Obj": null,
+          "Parent": null,
+          "Children": {
+            "Transformation": "translate(1,1,1) rotateX(20)",
+            "Obj": null,
+            "Parent": null,
+            "Children": null
+          }
+        },
+        {
+          "Transformation": "translate(1,1,1) rotateX(20)",
+          "Obj": null,
+          "Parent": null,
+          "Children": null
+        }
+      ]
+    },
+    {
+      "Transformation": null,
+      "Obj":"Sphere",
+      "Parent": null,
+      "Children": null
+    }
+  ]
+}

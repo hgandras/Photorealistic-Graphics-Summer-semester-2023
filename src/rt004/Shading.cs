@@ -48,13 +48,6 @@ public class Phong:ReflectanceModel
         Vector3d ambient_component = ambient_lighting * k_a;
         Vector3d diff_spec_comps=Vector3d.Zero;
 
-        //TODO: For shadows cast a ray from the light-object intersection back to the lightsource, and if the ray intersects 
-        //an object on its way, don't count that specific lightsource's contribution to the final value. Add the
-        //list of objects as input as well, and for the shadow ray calculate all intersections. If it intersects any 
-        //other object than the first intersection of the ray variable, don't count the lightsource.
-
-
-       // Console.WriteLine("asfdgfhg");
         foreach (LightSource light in light_sources)
         {
             if(objects!=null)

@@ -28,17 +28,11 @@ namespace rt004;
  * the X,Y,Z basis vectors in world coordinates can be accessed as a property. A camera can also be removed, so its world up Vector3d 
  * can be set to null. Or a camera just simply has the scene it is contained in as a field, so it can acces its properties.
  * 
- * TODO: Modify config file, so light sources can be added from it
- * 
  * TODO: Implement other shapes, light source, and camera types if I have time. Maybe implement another shading method.
- * 
- * TODO: Try to add materials to the config file as well.
  * 
  * TODO: Modify the intersection function that the ray should be in the world's coordinate system rather than in the 
  *		 camera's system.
  */
-
-
 
 public class Scene
 {
@@ -51,8 +45,6 @@ public class Scene
     public int PlaneHeightPx;
 	public float Kr = 0.7f;
 	public int maxDepth;
-
-
 	
     public int ObjectCount { get { return Objects.Count(); } }
     public int CamCount { get { return Cameras.Count(); } }
@@ -64,7 +56,7 @@ public class Scene
     public SceneObject Object;
 	public bool DisplayShadows;
 
-	//Private lists for storin all scene entities
+	//Private lists for storing all scene entities
 	private List<SceneObject> Objects;
 	private List<Camera> Cameras;
 	private List<LightSource> LightSources;
@@ -330,28 +322,28 @@ public class SceneEntity
     /// <summary>
     /// Rotatation around world system X axis
     /// </summary>
-    /// <param name="Rotation"></param>
-    private void RotateX(Vector3d Rotation)
+    /// <param name="angle"></param>
+    public void RotateX(double angle)
     {
-        Matrix4d rotationX = Matrix4d.CreateRotationX(Rotation.X);
+        Matrix4d rotationX = Matrix4d.CreateRotationX(angle);
         homogeneous_pos = rotationX * homogeneous_pos;
     }
     /// <summary>
     /// Rotatation around world system Y axis
     /// </summary>
     /// <param name="Rotation"></param>
-    public void RotateY(Vector3d Rotation)
+    public void RotateY(double angle)
     {
-        Matrix4d rotationY = Matrix4d.CreateRotationY(Rotation.Y);
+        Matrix4d rotationY = Matrix4d.CreateRotationY(angle);
 		homogeneous_pos = rotationY * homogeneous_pos;
     }
     /// <summary>
     /// Rotatation around world system Z axis
     /// </summary>
     /// <param name="Rotation"></param>
-    public void RotateZ(Vector3d Rotation)
+    public void RotateZ(double angle)
     {
-        Matrix4d rotationZ = Matrix4d.CreateRotationZ(Rotation.Z);
+        Matrix4d rotationZ = Matrix4d.CreateRotationZ(angle);
 		homogeneous_pos = rotationZ * homogeneous_pos;
     }
 }
@@ -673,13 +665,51 @@ public class SceneObject:SceneEntity,SurfaceProperties
 {
 	public Vector3d Color { get; set; }
 	public Material Material { get; set; }
+	//The coordinate system of the object in the world coordinate system
+	public Vector3d X { get; set; }
+	public Vector3d Y { get; set; }
+	public Vector3d Z { get; set; }
 	public SceneObject()
 	{
 		Color = new Vector3d(255, 0, 0);
 		Material = new Phong1();
 		Position = new Vector3d(0,0,0);
+		//On init the object's coordinates are directed the same way as the world system
+		X = new Vector3d(1, 0, 0);
+		Y = new Vector3d(0, 1, 0);
+		Z = new Vector3d(0, 0, 1);
 	}
-	public SceneObject(Vector3d color,Material material)
+
+	//TODO: Rotation around own axes
+
+	/// <summary>
+	/// Rotates the object around its own X axis. 
+	/// </summary>
+	/// <param name="angle"></param>
+	public void RotateObjX(double angle)
+	{
+
+	}
+    /// <summary>
+    /// Rotates the object around its own Y axis. 
+    /// </summary>
+    /// <param name="angle"></param>
+    public void RotateObjY(double angle)
+    {
+
+    }
+    /// <summary>
+    /// Rotates the object around its own Z axis. 
+    /// </summary>
+    /// <param name="angle"></param>
+    public void RotateObjZ(double angle)
+    {
+
+    }
+
+
+
+    public SceneObject(Vector3d color,Material material)
 	{
 		Color= color;
 		Material = material;
