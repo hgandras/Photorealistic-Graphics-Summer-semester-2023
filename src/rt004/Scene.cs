@@ -49,7 +49,6 @@ public class Scene
     public int PlaneWidthPx;
     public int PlaneHeightPx;
 	public int maxDepth;
-	public int RPP = 4; //Ray per pixel
     public int ObjectCount { get { return Objects.Count(); } }
     public int CamCount { get { return Cameras.Count(); } }
 	public int LightSourceCount { get { return LightSources.Count(); } }
@@ -215,7 +214,7 @@ public class Scene
 			for(int w=0;w<Plane.Width;w++)
 			{
 				//Cast the rays for each h,w pixel
-				List<Ray> rays=Cam.CastRay(Plane, w, h,RPP);
+				List<Ray> rays=Cam.CastRay(Plane, w, h,Plane.RayPerPixel);
 				Vector3d final_color = Vector3d.Zero;
 				//Transform ray to world coordinate system
 				foreach (Ray ray in rays)
@@ -225,7 +224,7 @@ public class Scene
 					int Depth = 0;
 					final_color += RecursiveRayTrace(ray, Depth);	
 				}
-                image.PutPixel(w, h, ColorTools.V3dToArr(final_color/RPP));
+                image.PutPixel(w, h, ColorTools.V3dToArr(final_color/Plane.RayPerPixel));
             }
         }
 		return image;
@@ -345,6 +344,7 @@ public class ProjectionPlane
 	//Width and height of the plane in pixels
 	public int Width;
 	public int Height;
+	public int RayPerPixel;
 	public double W { get { return 2; } }
 	public double H { get { return Height * (W / Width); } }
     public double WPixelStep { get {return W / Width; } }
@@ -353,6 +353,8 @@ public class ProjectionPlane
 	{
 		Height = config.Height;
 		Width = config.Width;
+		RayPerPixel = config.RayPerPixel;
+
 	}
 }
 

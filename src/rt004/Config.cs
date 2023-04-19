@@ -194,6 +194,7 @@ public class PlaneConfig
 {
     public int Height { get; set; }
     public int Width { get; set; }
+    public int RayPerPixel { get; set; }
 }
 
 public static class Logging
