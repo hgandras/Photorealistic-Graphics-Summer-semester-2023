@@ -48,9 +48,8 @@ public class Scene
     public ProjectionPlane Plane;
     public int PlaneWidthPx;
     public int PlaneHeightPx;
-	public float Kr = 0.7f;
 	public int maxDepth;
-	public int RPP = 10;
+	public int RPP = 4; //Ray per pixel
     public int ObjectCount { get { return Objects.Count(); } }
     public int CamCount { get { return Cameras.Count(); } }
 	public int LightSourceCount { get { return LightSources.Count(); } }
@@ -222,11 +221,9 @@ public class Scene
 				foreach (Ray ray in rays)
 				{
 					ray.Origin = Cam.Position;
-					ray.Direction = ray.Direction = Vector3d.Normalize((Matrix4d.Invert(Cam.CameraTransformMatrix) * new Vector4d(ray.Direction, 1)).Xyz - ray.Origin);
-
+					ray.Direction = Vector3d.Normalize((Matrix4d.Invert(Cam.CameraTransformMatrix) * new Vector4d(ray.Direction, 1)).Xyz - ray.Origin);
 					int Depth = 0;
-					final_color += RecursiveRayTrace(ray, Depth);
-					
+					final_color += RecursiveRayTrace(ray, Depth);	
 				}
                 image.PutPixel(w, h, ColorTools.V3dToArr(final_color/RPP));
             }
@@ -257,7 +254,7 @@ public class Scene
 			return BackgroundColor;
 		else
 		{
-			//TODO: If transparent create refractions, and approximate the reflected light more accurately (either by fresnel term, or in case of phong with k_s)
+			//TODO: If transparent create refractions
 
             //Calculate reflected color values
             if (DisplayShadows)
@@ -274,9 +271,14 @@ public class Scene
 
 			if (sO.Material.Glossy)
 			{
-				Vector3d ReflectedRayDirection = 2 * Vector3d.Dot(ray.Direction, sO.SurfaceNormal(ray)) * sO.SurfaceNormal(ray) - ray.Direction;
-				Ray ReflectedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), -ReflectedRayDirection);
-				pixel_color += Kr* RecursiveRayTrace(ReflectedRay, depth);
+				Vector3d SurfaceNormal = sO.SurfaceNormal(ray);
+				//Ray direction is taken with negative, since it is casted from the camera, and not from the surface
+				Vector3d ReflectedRayDirection = 2 * Vector3d.Dot(-ray.Direction,SurfaceNormal) * SurfaceNormal + ray.Direction;
+				ReflectedRayDirection = Vector3d.Normalize(ReflectedRayDirection);
+				Ray ReflectedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), ReflectedRayDirection);
+				//Approximated fresnel term, added
+				double schlick_coeff = ShadeTools.Schlick(-ray.Direction,SurfaceNormal,1,sO.Material.RefractionIndex); 
+				pixel_color += schlick_coeff* RecursiveRayTrace(ReflectedRay, depth);
 			}
 			if(sO.Material.Transparent)
 			{
@@ -616,8 +618,6 @@ public class PerspectiveCamera:Camera
 	}
 }
 
-
-
 public interface SurfaceProperties
 {
     public Material Material { get; set; }
@@ -722,7 +722,7 @@ public class Sphere:SceneObject
     }
 
 	/// <summary>
-	/// Returns the normal of a given point, if it is on the sphere. (Not a very general function, maybe 
+	/// Returns the normal of a given point, if it is on the sphere. (Not the most general function, maybe 
 	/// parameterizing the sphere by azimuth and zenith angle would be better).
 	/// </summary>
 	/// <param name="point"></param>
@@ -736,16 +736,8 @@ public class Sphere:SceneObject
 				ray.Intersections.Add(this, intersections);
 		}
 		Vector3d first_intersection=ray.GetRayPoint(ray.FirstIntersection);
-		return Vector3d.Normalize(Center - first_intersection);
+		return Vector3d.Normalize(first_intersection-Center);
 	}
-}
-
-/// <summary>
-/// TODO: IMPLEMENT Represents a not infinite plane in the scene.
-/// </summary>
-public class BoundedPlane
-{
-
 }
 
 public class Plane : SceneObject, SurfaceProperties
@@ -781,10 +773,10 @@ public class Plane : SceneObject, SurfaceProperties
 	/// <returns>The parameters t of the ray in the intersection points</returns>
     public override float[]? Intersection(Ray ray)
     {
-        float denominator = (float)Vector3d.Dot(ray.Direction, SurfaceNormal(ray));
+        float denominator = (float)Vector3d.Dot(ray.Direction, -SurfaceNormal(ray));
         if (denominator >Globals.ROUNDING_ERR )
         {
-            float numerator = (float)Vector3d.Dot((Position - ray.Origin), SurfaceNormal(ray));
+            float numerator = (float)Vector3d.Dot((Position - ray.Origin), -SurfaceNormal(ray));
 			if(numerator/denominator>Globals.ROUNDING_ERR)
                 return new float[] { numerator / denominator };
 		}
@@ -803,8 +795,8 @@ public class Plane : SceneObject, SurfaceProperties
         
         double angle = Vector3d.CalculateAngle(Normal, ray.Direction);
 		if (angle > Math.PI / 2.0 && angle<-Math.PI/2.0)
-			return Normal;
-		return -Normal;
+			return -Normal;
+		return Normal;
 	}
 }
 

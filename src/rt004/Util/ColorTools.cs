@@ -66,3 +66,21 @@ public class MathTools
 
 }
 
+public static class ShadeTools
+{
+    /// <summary>
+    /// Calculates the approximate fresnel term for 2 rays.
+    /// </summary>
+    /// <param name="incoming_ray"></param>
+    /// <param name="reflected_ray"></param>
+    /// <param name="refraction_index"></param>
+    /// <returns></returns>
+    public static double Schlick(Vector3d incoming_light_dir,Vector3d incident_surface_normal,double n_1,double n_2)
+    {
+        //The 
+        double R0 = Math.Pow((n_1-n_2)/(n_1+n_2),2);
+        double cos_theta = Vector3d.Dot(incoming_light_dir,incident_surface_normal);
+        return R0 + (1 - R0) * Math.Pow(1 - cos_theta,5);
+    }
+}
+

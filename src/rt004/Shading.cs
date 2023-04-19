@@ -42,18 +42,19 @@ public class Phong:ReflectanceModel
         Vector3d intersection_point = ray.GetRayPoint(ray.FirstIntersection);
         Vector3d surface_normal = ray.FirstIntersectedObject.SurfaceNormal(ray);
 
-        Vector3d view_direction=ray.Direction;
+        Vector3d view_direction=-ray.Direction;
 
         Vector3d ambient_component = ambient_lighting * k_a;
         Vector3d diff_spec_comps=Vector3d.Zero;
 
         foreach (LightSource light in light_sources)
         {
-            if(objects!=null)
+            Ray light_ray = light.CastRay(intersection_point);
+            if (objects!=null)
             {
                 //Since the ray contains the direction normalized, we only have to check if the ray intersects 
                 //any objects between the light source, and the object.
-                Ray shadowRay = new Ray(intersection_point, -light.CastRay(intersection_point).Direction);
+                Ray shadowRay = new Ray(intersection_point, -light_ray.Direction);
 
                 foreach (SceneObject obj in objects)
                 {
@@ -65,11 +66,11 @@ public class Phong:ReflectanceModel
                     continue; 
             }
             
-            Vector3d incoming_light_direction = light.CastRay(intersection_point).Direction;
-            Vector3d refleced_light_direction = 2 * Vector3d.Dot(incoming_light_direction, surface_normal) * surface_normal - incoming_light_direction;
+            Vector3d incoming_light_direction = -light_ray.Direction;
+            Vector3d reflected_light_direction = 2 * Vector3d.Dot(incoming_light_direction, surface_normal) * surface_normal - incoming_light_direction;
 
             Vector3d diffuse_component = k_d * Math.Max(Vector3d.Dot(incoming_light_direction, surface_normal), 0.0) * light.DiffuseLighting;
-            Vector3d specular_component = k_s * Math.Pow(Math.Max(Vector3d.Dot(refleced_light_direction, view_direction), 0.0), alpha) * light.SpecularLighting;
+            Vector3d specular_component = k_s * Math.Pow(Math.Max(Vector3d.Dot(reflected_light_direction, view_direction), 0.0), alpha) * light.SpecularLighting;
 
             diff_spec_comps += (diffuse_component + specular_component);
         }
@@ -86,20 +87,23 @@ public class Phong:ReflectanceModel
 /// </summary>
 public interface Material
 {
+    public double RefractionIndex { get; }
     public bool Glossy { get; }
     public bool Transparent { get; }
     public ReflectanceModel getReflectance { get; }
 }
 
 public class Phong1 : Material
-{    
-
+{
+    public double RefractionIndex { get { return 1.5; } }
     public bool Glossy{get{ return true; }}
     public bool Transparent { get { return false; } }
     public ReflectanceModel getReflectance { get { return new Phong(0.1f, 0.8f, 0.2f, 10); } }
 }
 public class Phong2 : Material
 {
+    public double RefractionIndex { get { return 4; } }
+
     public ReflectanceModel getReflectance { get { return new Phong(0.1f, 0.5f, 0.5f, 150); } }
 
     public bool Glossy { get { return true; } }
@@ -108,6 +112,8 @@ public class Phong2 : Material
 }
 public class Phong3 : Material
 {
+    public double RefractionIndex { get { return 1.5; } }
+
     public ReflectanceModel getReflectance { get { return new Phong(0.1f, 0.6f, 0.4f, 80); } }
 
     public bool Glossy { get { return true; } }
@@ -117,6 +123,7 @@ public class Phong3 : Material
 
 public class Phong4:Material
 {
+    public double RefractionIndex { get { return 2; } }
     public ReflectanceModel getReflectance { get { return new Phong(0.2f, 0.2f, 0.8f, 400); } }
 
     public bool Glossy { get { return true; } }
@@ -126,6 +133,7 @@ public class Phong4:Material
 
 public class Phong5:Material
 {
+    public double RefractionIndex { get { return 4; } }
     public ReflectanceModel getReflectance { get { return new Phong(0.1f, 0.6f, 0.4f, 80); } }
 
     public bool Glossy { get { return true; } }
