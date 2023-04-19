@@ -6,6 +6,12 @@ using System.Xml;
 
 namespace rt004;
 
+
+//TODO: Add attributes to be inherited to the tree. Inner nodes contain transformations, and attributes. They are
+//read in string form, and those are stored in strings. Getters take care of calculating the actual matrices,
+//color values etc. The leaf nodes contain objects, which are created in the node constructor, based on the 
+//read integer.
+
 /// <summary>
 /// Directed tree data strcture to store scene elements
 /// </summary>
@@ -18,6 +24,7 @@ public class SceneGraph
     {
         string jsonStr = File.ReadAllText(filePath);
         var obj=JsonDocument.Parse(jsonStr);
+
         try
         {
             Root = JsonSerializer.Deserialize<Node>(obj);
@@ -29,37 +36,33 @@ public class SceneGraph
                 logger.LogWarning("SceneGraph.json is not set up properly, scene is empty!");
             else if (ex is NullReferenceException)
                 logger.LogWarning("Root initialized as null, scene is empty!");
-        }
-        
+        } 
     }
 
 	public class Node
 	{
-        public Node? Parent { get; set; }
-        public List<Node>? Children { get; set; }
-        private string? Obj { get; set; }
-        private string? Transformation { get; set; }
-        public SceneObject Object { 
-            get 
-            {
-                SceneObject obj = Activator.CreateInstance(Type.GetType(Globals.ASSEMBLY_NAME+Obj)) as SceneObject;
-                return obj;
-            } 
-        }
-        public Matrix4d Transform { 
-            get 
+        public Node() 
+        {
+            //Create scene object
+            if (Obj != null)
+                priv_obj = Activator.CreateInstance(Type.GetType(Globals.ASSEMBLY_NAME + Obj)) as SceneObject;
+            else
+                priv_obj = null;
+
+            //Create transformation matrix based on the input
+            if(Transformation != null)
             {
                 string[] commands = Transformation.Split(" ");
-                Matrix4d FinalTransform=Matrix4d.Identity;
-                foreach(string command in commands)
+                Matrix4d FinalTransform = Matrix4d.Identity;
+                foreach (string command in commands)
                 {
-                    int left_bracket=command.IndexOf('(');
-                    string transform = command.Substring(0,left_bracket);
-                    string values=command.Substring(left_bracket);
-                    values=values.Trim('(',')');
+                    int left_bracket = command.IndexOf('(');
+                    string transform = command.Substring(0, left_bracket);
+                    string values = command.Substring(left_bracket);
+                    values = values.Trim('(', ')');
                     float[] values_arr = values.Split(",").Select(float.Parse).ToArray();
-                    
-                    switch(transform)
+
+                    switch (transform)
                     {
                         case "translate":
                             Vector3d values_vec = ColorTools.ArrToV3d(values_arr);
@@ -76,9 +79,20 @@ public class SceneGraph
                             break;
                     }
                 }
-                return FinalTransform;  
-            } 
+                priv_transform = FinalTransform;
+            }
+            else
+                priv_transform = null;
         }
+
+        public Node? Parent { get; set; }
+        public List<Node>? Children { get; set; }
+        private string? Obj { get; set; }
+        private string? Transformation { get; set; }
+        private SceneObject? priv_obj;
+        private Matrix4d? priv_transform;
+        public SceneObject? Object { get {return priv_obj;} }
+        public Matrix4d? Transform { get {return priv_transform;} }
 	}
 
     /// <summary>

@@ -6,7 +6,6 @@ using System.Linq.Expressions;
 using System.Security.AccessControl;
 using System.Text;
 using System.Threading.Tasks;
-using static rt004.SceneConfig;
 
 namespace rt004;
 

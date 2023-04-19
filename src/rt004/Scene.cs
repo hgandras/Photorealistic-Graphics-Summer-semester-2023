@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Drawing;
 using System.Numerics;
 using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
@@ -32,6 +33,10 @@ namespace rt004;
  * 
  * TODO: Modify the intersection function that the ray should be in the world's coordinate system rather than in the 
  *		 camera's system.
+ *		 
+ * TODO: Create getters for the transformation matrices of scene entities, and use them in the scene representation tree
+ * 
+ * TODO: Add samples per pixel to the config file
  */
 
 public class Scene
@@ -45,7 +50,7 @@ public class Scene
     public int PlaneHeightPx;
 	public float Kr = 0.7f;
 	public int maxDepth;
-	
+	public int RPP = 10;
     public int ObjectCount { get { return Objects.Count(); } }
     public int CamCount { get { return Cameras.Count(); } }
 	public int LightSourceCount { get { return LightSources.Count(); } }
@@ -112,7 +117,7 @@ public class Scene
 		{
 			//TODO: If not all positions, colors are specified in the config file, then initialize the leftover scene entities with default parameters
 			logger.LogWarning("Some scene object's properties were not defined, some SceneEnities are added with default parameters");
-			Environment.Exit(1);
+			//Environment.Exit(1);
 		}
 	}
 
@@ -131,16 +136,10 @@ public class Scene
                 Objects.Add(new_object);
                 break;
 
-			case "Box":
-				new_object = new Box();
-				Objects.Add(new_object);
-				break;
-
-			/*case "Plane":
+			case "Plane":
 				new_object = new Plane();
 				Objects.Add(new_object);
-				break;*/
-
+				break;
         }
     }
 	public void AddObject(SceneObject scene_object)
@@ -171,7 +170,7 @@ public class Scene
 	}
 
 	/// <summary>
-	///TODO: Not yet implemnted, because I think I want an ID system for the objects, lightsources, and cameras.
+	///TODO: Not yet implemnted, removes an object by deleting a leafnode from the scene tree
 	/// </summary>
 	public void RemoveObject()
 	{
@@ -210,23 +209,28 @@ public class Scene
 	/// <param name="height"></param>
 	public FloatImage SynthesizeImage()
 	{
-		FloatImage image = new FloatImage(Plane.PxWidth,Plane.PxHeight,3);
+		FloatImage image = new FloatImage(Plane.Width,Plane.Height,3);
 		//Iterate through the pixels 
-		for(int h=0;h<Plane.PxHeight;h++)
+		for(int h=0;h<Plane.Height;h++)
 		{
-			for(int w=0;w<Plane.PxWidth;w++)
+			for(int w=0;w<Plane.Width;w++)
 			{
 				//Cast the rays for each h,w pixel
-				Ray ray=Cam.CastRay(Plane, w, h);
+				List<Ray> rays=Cam.CastRay(Plane, w, h,RPP);
+				Vector3d final_color = Vector3d.Zero;
 				//Transform ray to world coordinate system
-                ray.Origin = Cam.Position;
-                ray.Direction = ray.Direction = Vector3d.Normalize((Matrix4d.Invert(Cam.CameraTransformMatrix) * new Vector4d(ray.Direction, 1)).Xyz - ray.Origin);
+				foreach (Ray ray in rays)
+				{
+					ray.Origin = Cam.Position;
+					ray.Direction = ray.Direction = Vector3d.Normalize((Matrix4d.Invert(Cam.CameraTransformMatrix) * new Vector4d(ray.Direction, 1)).Xyz - ray.Origin);
 
-				int Depth = 0;
-				Vector3d pxColor = RecursiveRayTrace(ray,Depth);
-				image.PutPixel(w, h,ColorTools.V3dToArr(pxColor));
+					int Depth = 0;
+					final_color += RecursiveRayTrace(ray, Depth);
+					
+				}
+                image.PutPixel(w, h, ColorTools.V3dToArr(final_color/RPP));
             }
-		}
+        }
 		return image;
 	}
 
@@ -290,6 +294,13 @@ public class SceneEntity
 {
     protected Vector4d homogeneous_pos;
 	protected float[] pos;
+	public Vector3d X { get { return x; } }
+	public Vector3d Y { get { return y; } }
+	public Vector3d Z { get { return z; } }
+	protected Vector3d x;
+    protected Vector3d y;
+    protected Vector3d z;
+
     public Vector3d Position
     {
         get {  return homogeneous_pos.Xyz; }
@@ -306,46 +317,20 @@ public class SceneEntity
 	public SceneEntity()
 	{
 		pos=new float[3];
-	}
+		x = new Vector3d(1, 0, 0);
+		y = new Vector3d(0, 1, 0);
+		z = new Vector3d(0, 0, 1);
+    }
 
 	/// <summary>
-	/// Translates the object.
+	/// TODO: Transforms the coordinate system of the object by the given transformation matrix.
 	/// </summary>
-	/// <param name="Translation"></param>
-    public void Translate(Vector3d Translation)
-    {
-		Matrix4d translation_matrix = Matrix4d.CreateTranslation(Translation);
-		translation_matrix.Transpose();
-        homogeneous_pos = translation_matrix * homogeneous_pos;
-    }
+	/// <param name="transform"></param>
+	public void Transform(Matrix4d transform)
+	{
+		
+	}
 
-    /// <summary>
-    /// Rotatation around world system X axis
-    /// </summary>
-    /// <param name="angle"></param>
-    public void RotateX(double angle)
-    {
-        Matrix4d rotationX = Matrix4d.CreateRotationX(angle);
-        homogeneous_pos = rotationX * homogeneous_pos;
-    }
-    /// <summary>
-    /// Rotatation around world system Y axis
-    /// </summary>
-    /// <param name="Rotation"></param>
-    public void RotateY(double angle)
-    {
-        Matrix4d rotationY = Matrix4d.CreateRotationY(angle);
-		homogeneous_pos = rotationY * homogeneous_pos;
-    }
-    /// <summary>
-    /// Rotatation around world system Z axis
-    /// </summary>
-    /// <param name="Rotation"></param>
-    public void RotateZ(double angle)
-    {
-        Matrix4d rotationZ = Matrix4d.CreateRotationZ(angle);
-		homogeneous_pos = rotationZ * homogeneous_pos;
-    }
 }
 
 /// <summary>
@@ -355,19 +340,17 @@ public class SceneEntity
 /// </summary>
 public class ProjectionPlane
 {
-	public int PxWidth;
-	public int PxHeight;
-
+	//Width and height of the plane in pixels
+	public int Width;
+	public int Height;
 	public double W { get { return 2; } }
-	public double h { get { return PxHeight * (W / PxWidth); } }
-
-    public double WPixelStep { get {return W / PxWidth; } }
-	public double h_pixel_step { get { return h / PxHeight ; } }
-
+	public double H { get { return Height * (W / Width); } }
+    public double WPixelStep { get {return W / Width; } }
+	public double HPixelStep { get { return H / Height ; } }
     public ProjectionPlane(PlaneConfig config)
 	{
-		PxHeight = config.Height;
-		PxWidth = config.Width;
+		Height = config.Height;
+		Width = config.Width;
 	}
 }
 
@@ -376,12 +359,15 @@ public class ProjectionPlane
 /// </summary>
 public class Ray
 {
-	/// <summary>
-	/// Used when the intersection function is called. It stores the intersections of each 
-	/// encountered object, and based on this it creates the image. After the image is generated, 
-	/// it contains only those objects as keys, that were intersected, so there are no null values.
-	/// </summary>
-	public Dictionary<SceneObject, float[]> Intersections=new Dictionary<SceneObject, float[]>();
+    public Vector3d Origin;
+    public Vector3d Direction;
+
+    /// <summary>
+    /// Used when the intersection function is called. It stores the intersections of each 
+    /// encountered object, and based on this it creates the image. After the image is generated, 
+    /// it contains only those objects as keys, that were intersected, so there are no null values.
+    /// </summary>
+    public Dictionary<SceneObject, float[]> Intersections=new Dictionary<SceneObject, float[]>();
 	/// <summary>
 	/// Returns the first object that the ray encountered, based on the t value intervals in the Intersections property.
 	/// </summary>
@@ -390,21 +376,18 @@ public class Ray
 			Dictionary<SceneObject,float> first_intersection= Intersections.ToDictionary(k=>k.Key,v=>v.Value.Min());
 			SceneObject? fi =first_intersection.Values.Count()==0 ? null: first_intersection.MinBy(kvp => kvp.Value).Key;
 			return fi; 
-			} }
+			} 
+	}
 	
 	/// <summary>
 	/// Returns the parameter t, which represents the ray intersection.
 	/// </summary>
 	public float FirstIntersection { 
-		get { 
+		get 
+		{
 			return FirstIntersectedObject==null?float.PositiveInfinity:Intersections[FirstIntersectedObject].Min(); 
-			} }
-
-	public Vector3d Origin;
-
-	public Vector3d Direction;
-
-	
+		}
+	}
 
 	/// <summary>
 	/// Origing, and direction. The constructor normalizes them before assigning it to its fields.
@@ -429,14 +412,12 @@ public class Ray
     }
 }
 
-
-
 public class Camera : SceneEntity
 {
 	private Scene? Scene;
 
 	//TODO: Angle getters.
-	public float ElevationAngle{get;set;}
+	public float ElevationAngle{ get; set; }
 	public float AzimuthAngle { get; set; }
 
 	/// <summary>
@@ -480,8 +461,7 @@ public class Camera : SceneEntity
 				return new Matrix3d(X, Y, Z);
 			}
 			else
-			{
-				
+			{	
 				Console.WriteLine("WARNING: Scene is not set for camera.");//Create logging for this 
 				return new Matrix3d();
 			}
@@ -492,7 +472,7 @@ public class Camera : SceneEntity
 	{
 		get 
 		{
-            Matrix4d camSystem = new Matrix4d(new Vector4d(CamX, 0), new Vector4d(CamY, 0), new Vector4d(CamZ, 0), new Vector4d(0, 0, 0, 1));
+            Matrix4d camSystem = new Matrix4d(new Vector4d(X, 0), new Vector4d(Y, 0), new Vector4d(Z, 0), new Vector4d(0, 0, 0, 1));
             Matrix4d translation = Matrix4d.CreateTranslation(-Position);
             translation.Transpose();
 
@@ -503,15 +483,15 @@ public class Camera : SceneEntity
 	/// <summary>
 	/// Camera's X axis in the world coordinate system
 	/// </summary>
-	public Vector3d CamX { get { return CameraSystem.Row0; } }
+	public new Vector3d X { get { return CameraSystem.Row0; } }
 	/// <summary>
 	/// Camera's Y axis in the world coordinate system
 	/// </summary>
-	public Vector3d CamY { get { return CameraSystem.Row1; } }
+	public new Vector3d Y { get { return CameraSystem.Row1; } }
 	/// <summary>
 	/// Camera's Z axis in the world coordinate system
 	/// </summary>
-	public Vector3d CamZ { get { return CameraSystem.Row2; } }
+	public new Vector3d Z { get { return CameraSystem.Row2; } }
 
 	/// <summary>
 	/// This lets the camera to associate it with a scene, if it was not set in the constructor.
@@ -529,7 +509,7 @@ public class Camera : SceneEntity
 	/// <returns></returns>
 	public Vector3d CameraTransform(Vector3d point)
 	{
-        Matrix4d camSystem = new Matrix4d(new Vector4d(CamX, 0), new Vector4d(CamY, 0), new Vector4d(CamZ, 0), new Vector4d(0, 0, 0, 1));
+        Matrix4d camSystem = new Matrix4d(new Vector4d(X, 0), new Vector4d(Y, 0), new Vector4d(Z, 0), new Vector4d(0, 0, 0, 1));
         Matrix4d translation = Matrix4d.CreateTranslation(-Position);
         translation.Transpose(); //OpenTK puts the translation to the last ROW, not the last column ???
 
@@ -584,9 +564,11 @@ public class Camera : SceneEntity
 	{
 		return CameraSystem * sceneEntity.Position;
 	}
-	public virtual Ray CastRay(ProjectionPlane plane, int px_x, int px_y)
+	public virtual List<Ray> CastRay(ProjectionPlane plane, int px_x, int px_y,int ray_per_pixel=1)
 	{
-		return new Ray(new Vector3d(),new Vector3d());
+		List<Ray> rays = new List<Ray>();
+        rays.Add(new Ray(new Vector3d(), new Vector3d()));
+		return rays;
 	}
 }
 
@@ -603,53 +585,38 @@ public class PerspectiveCamera:Camera
 	}
 
 	/// <summary>
-	/// 
+	/// TODO: Add support for multiple ray casts per pixel. It should return a list of Ray objects, and 
+	/// also divide the pixel properly. Maybe add random and uniform sampling per pixel.
 	/// </summary>
 	/// <param name="plane">The plane to project to </param>
 	/// <param name="px_x"></param>
 	/// <param name="px_y"></param>
+	/// <param name="ray_per_pixel">The number of rays to be casted through a pixel. The ray's direction is chosen randomly within the square with a 
+	/// uniform distribution.</param>
 	/// <returns>The ray's direction vector in the camera coordinate system.</returns>
 	/// <exception cref="NotImplementedException"></exception>
-	public override Ray CastRay(ProjectionPlane plane, int px_x, int px_y)
+	public override List<Ray> CastRay(ProjectionPlane plane, int px_x, int px_y,int ray_per_pixel=1)
 	{
-        double x = px_x * plane.WPixelStep + plane.WPixelStep / 2 - plane.W / 2;
-		double y = px_y * plane.h_pixel_step + plane.h_pixel_step / 2 - plane.h / 2;
-		//The intersected point in the plane in the camera system
-		double z = (plane.W / 2f) / Math.Tan(FOV / 360f * Math.PI);
-        Vector3d intersection_point =new Vector3d(x,-y,-z);
-		
-		return new Ray( Vector3d.Zero,Vector3d.Normalize(intersection_point));
+		List<Ray> rays = new List<Ray>();
+		Random rnd = new Random();
+		for(int i = 0;i<ray_per_pixel;i++)
+		{
+			//Generate offsets in x-y directions
+			double offset_x = rnd.NextDouble()*plane.WPixelStep;
+			double offset_y = rnd.NextDouble()*plane.HPixelStep;
+			//Add ranges to the pixels
+            double x = px_x * plane.WPixelStep +offset_x - plane.W / 2;
+            double y = px_y * plane.HPixelStep + offset_y - plane.H / 2;
+            //The intersected point in the plane in the camera system
+            double z = (plane.W / 2f) / Math.Tan(FOV / 360f * Math.PI);
+            Vector3d intersection_point = new Vector3d(x, -y, -z); //y is negative for proper image coordinates
+			rays.Add(new Ray(Vector3d.Zero,intersection_point));
+        }
+        return rays;
 	}
 }
 
-/// <summary>
-/// Might be implemented later.
-/// </summary>
-public class ParallelCamera :Camera
-{
-    public float PlaneDistance { get; set; }
-    
-    public ParallelCamera(CameraConfig config) :base(config)
-	{
-		
-    }
-	public ParallelCamera(CameraConfig config, Scene scene):base(config,scene)
-	{
 
-	}
-	/// <summary>
-	/// Casts perpendicular rays to the plane from the pixel.
-	/// </summary>
-	/// <param name="plane"></param>
-	/// <param name="px_x"></param>
-	/// <param name="px_y"></param>
-	/// <returns></returns>
-	/// <exception cref="NotImplementedException"></exception>
-    public override Ray CastRay(ProjectionPlane plane, int px_x, int px_y)
-    {
-        throw new NotImplementedException();
-    }
-}
 
 public interface SurfaceProperties
 {
@@ -665,49 +632,17 @@ public class SceneObject:SceneEntity,SurfaceProperties
 {
 	public Vector3d Color { get; set; }
 	public Material Material { get; set; }
-	//The coordinate system of the object in the world coordinate system
-	public Vector3d X { get; set; }
-	public Vector3d Y { get; set; }
-	public Vector3d Z { get; set; }
+	
 	public SceneObject()
 	{
 		Color = new Vector3d(255, 0, 0);
 		Material = new Phong1();
 		Position = new Vector3d(0,0,0);
 		//On init the object's coordinates are directed the same way as the world system
-		X = new Vector3d(1, 0, 0);
-		Y = new Vector3d(0, 1, 0);
-		Z = new Vector3d(0, 0, 1);
+		x = new Vector3d(1, 0, 0);
+		y = new Vector3d(0, 1, 0);
+		z = new Vector3d(0, 0, 1);
 	}
-
-	//TODO: Rotation around own axes
-
-	/// <summary>
-	/// Rotates the object around its own X axis. 
-	/// </summary>
-	/// <param name="angle"></param>
-	public void RotateObjX(double angle)
-	{
-
-	}
-    /// <summary>
-    /// Rotates the object around its own Y axis. 
-    /// </summary>
-    /// <param name="angle"></param>
-    public void RotateObjY(double angle)
-    {
-
-    }
-    /// <summary>
-    /// Rotates the object around its own Z axis. 
-    /// </summary>
-    /// <param name="angle"></param>
-    public void RotateObjZ(double angle)
-    {
-
-    }
-
-
 
     public SceneObject(Vector3d color,Material material)
 	{
@@ -723,20 +658,17 @@ public class SceneObject:SceneEntity,SurfaceProperties
 	{
 		return Vector3d.Zero;
 	}
-   
 }
-
 
 public class Sphere:SceneObject
 {
 	public float Radius;
 	public Vector3d Center { get { return Position; } }
-
-
 	public Sphere():base()
 	{
 		Radius = 1;
 	}
+
 	/// <summary>
 	/// Initializes a sphere in the scene with the defined color, position, and radius.
 	/// </summary>
@@ -809,7 +741,7 @@ public class Sphere:SceneObject
 }
 
 /// <summary>
-/// Represents a not infinite plane in the scene
+/// TODO: IMPLEMENT Represents a not infinite plane in the scene.
 /// </summary>
 public class BoundedPlane
 {
@@ -820,9 +752,17 @@ public class Plane : SceneObject, SurfaceProperties
 {
 
 	Vector3d Normal;
+
 	/// <summary>
-	/// Creates a parametric equation of a plane from the normal, and a point that lies on the plane. Since a plane's
-	/// position can'be defined, because it has an infinite span, 
+	/// Creates parametric equation of the plane with default values.
+	/// </summary>
+	public Plane()
+	{
+
+	}
+
+	/// <summary>
+	/// Creates a parametric equation of a plane from the normal, and a point that lies on the plane. 
 	/// </summary>
 	/// <param name="Point"></param>
 	/// <param name="Normal"></param>
@@ -868,53 +808,7 @@ public class Plane : SceneObject, SurfaceProperties
 	}
 }
 
-public class Box:SceneObject,SurfaceProperties
-{
 
-	public Box() : base()
-	{
-
-	}
-	public Box(Vector3d color,Material material):base(color,material)
-	{
-
-	}
-
-	public new float[] Intersection(Ray ray,Vector3d cam_sys_pos)
-	{
-		return new float[] { };
-	}
-
-	public new Vector3d SurfaceNormal(Vector3d point)
-	{
-		return Vector3d.Zero;
-	}
-}
-
-public class Cylinder:SceneObject,SurfaceProperties
-{
-	public float Radius,Height;
-
-	public Cylinder(Vector3d color,Material material,float Rad,float Hei,Vector3d Pos):base(color,material)
-	{
-		Radius = Rad;
-		Height = Hei;
-		Position = Pos;
-	}
-
-
-    public new float[] Intersection(Ray ray, Vector3d cam_sys_pos)
-    {
-        return new float[] { };
-    }
-
-    public new Vector3d SurfaceNormal(Vector3d point)
-    {
-        return Vector3d.Zero;
-    }
-
-
-}
 
 /// <summary>
 /// In case something lighting sepcific comes to my mind. Light 

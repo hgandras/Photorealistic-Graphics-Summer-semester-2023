@@ -11,7 +11,6 @@ using Microsoft.Extensions.Logging.Configuration;
 
 namespace rt004;
 
-
 public class Globals
 {
     public const float ROUNDING_ERR = 1e-5f;
@@ -20,8 +19,6 @@ public class Globals
 
 internal class Program
 {
-  
-
   static void Main(string[] args)
   {
         var logger = Logging.CreateLogger<Program>();
