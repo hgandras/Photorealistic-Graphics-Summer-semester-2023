@@ -82,8 +82,9 @@ public class Scene
 	public Scene(Config config)
 	{
 		logger = Logging.CreateLogger<Scene>();
-		//Initializing some properties
-		Objects= new List<SceneObject>();
+        //Initializing some properties
+        SceneGraph scenegraph = new SceneGraph(config.SceneConfig.SceneGraph);
+        Objects = scenegraph.RetrieveObjects();
 		LightSources = new List<LightSource>();
         Cameras = new List<Camera> //Add perspective camera by default
 		{
@@ -100,11 +101,6 @@ public class Scene
 		//Add scene elements based on properties
 		try
 		{
-			foreach(SceneObject so in config.SceneConfig.SceneObjects)
-			{
-				logger.LogInformation("Scene object {} at position {} added.", so.GetType(), so.Position);
-				AddObject(so);
-			}
 			foreach(LightSource ls in config.SceneConfig.LightSources)
 			{
 				logger.LogInformation("Light source {} added to scene",ls.GetType());
@@ -754,14 +750,17 @@ public class Sphere:SceneObject
 public class Plane : SceneObject, SurfaceProperties
 {
 
-	Vector3d Normal;
+	public Vector3d Normal;
 
 	/// <summary>
 	/// Creates parametric equation of the plane with default values.
 	/// </summary>
 	public Plane()
 	{
-
+		Normal = new Vector3d(0,1,0);
+		Material = new Phong1();
+		Color = new Vector3d(0.9,0.9,0.9);
+		Position = Vector3d.Zero;
 	}
 
 	/// <summary>

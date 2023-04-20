@@ -29,16 +29,6 @@ internal class Program
         GeneralConfig generalConfig = config.GeneralConfig;
         logger.LogInformation("Config file loaded");
 
-        logger.LogInformation("Loading scene graph");
-        SceneGraph scenegraph = new SceneGraph("SceneGraph.json");
-        List<SceneObject> objects = scenegraph.RetrieveObjects();
-        Console.WriteLine(objects.Count());
-        foreach(SceneObject sceneObject in objects)
-        {
-            Console.WriteLine("Pos: " + sceneObject.Position+"Color: "+sceneObject.Color+"Material: "+sceneObject.Material);
-        }
-        logger.LogInformation("Scene graph loaded!::))");
-
         int wid = config.PlaneConfig.Width;
         int hei = config.PlaneConfig.Height;
         string fileName = generalConfig.fileName;

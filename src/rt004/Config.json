@@ -14,48 +14,7 @@
     "Shadows": true,
     "BackgroundColor": [ 0.1, 0.2, 0.3 ],
     "MaxDepth": 8,
-    "Objects": {
-      "Spheres": {
-        "Number":4 ,
-        "Positions": [
-          [ 0, 0, 0 ],
-          [ 1.4,-0.7,-0.5 ],
-          [ -0.7, 0.7, -0.8 ],
-          [ 1.5,0.6,0.1 ],
-          [ 0, 0, -3 ]
-        ],
-        "Colors": [
-          [ 1.0, 1.0, 0.2 ],
-          [ 0.2, 0.3, 1.0 ],
-          [ 0.8, 0.2, 0.2 ],
-          [ 0.3, 0.2, 0 ],
-          [ 0.5, 0.5, 0.7 ]
-        ],
-        "Materials": [
-          "Phong1",
-          "Phong2",
-          "Phong3",
-          "Phong4",
-          "Phong1"
-        ],
-        "Radiuses": [ 1, 0.6, 0.1, 0.5, 1 ]
-      },
-      "Planes": {
-        "Number": 1,
-        "Normals": [
-          [ 0, 1, 0 ]
-        ],
-        "Positions": [
-          [ 0, -1.3, 0 ]
-        ],
-        "Colors": [
-          [ 0.9, 0.9, 0.9 ]
-        ],
-        "Materials": [
-          "Phong5"
-        ]
-      }
-    },
+    "SceneGraph": "SceneGraph.json",
     "AmbientLighting": [ 1, 1, 1 ],
     "Lightings": {
       "PointLights": {
@@ -85,6 +44,6 @@
   "PlaneConfig": {
     "Height": 800 ,
     "Width": 1200,
-    "RayPerPixel":10
+    "RayPerPixel":1
   }
 }

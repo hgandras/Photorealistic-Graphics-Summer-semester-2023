@@ -73,36 +73,13 @@ public class SceneConfig
     public int MaxDepth { get; set; }
 
     public float[] BackgroundColor { get; set; }
+    public string SceneGraph { get; set; }
 
-    public readonly List<SceneObject> SceneObjects=new List<SceneObject>();
     public readonly List<LightSource> LightSources = new List<LightSource>();
     public void Init()
     {
         try
         {
-            if (Objects.Spheres.Number != Objects.Spheres.Positions.Count())
-                logger.LogWarning("Number of denoted spheres is different than number of positions!");
-            for (int i = 0; i < Objects.Spheres.Number; i++)
-            {
-
-                Material material = Activator.CreateInstance(Type.GetType(Globals.ASSEMBLY_NAME+Objects.Spheres.Materials[i])) as Material;
-                SceneObjects.Add(new Sphere(
-                                ColorTools.ArrToV3d(Objects.Spheres.Colors[i]),
-                                ColorTools.ArrToV3d(Objects.Spheres.Positions[i])
-                                , material
-                                , Objects.Spheres.Radiuses[i]));
-            }
-            if (Objects.Planes.Number != Objects.Planes.Positions.Count())
-                logger.LogWarning("Number of denoted planes is different than number of positions!");
-            for (int i = 0; i < Objects.Planes.Number; i++)
-            {
-                Material material = Activator.CreateInstance(Type.GetType(Globals.ASSEMBLY_NAME + Objects.Spheres.Materials[i])) as Material;
-                SceneObjects.Add(new Plane(ColorTools.ArrToV3d(Objects.Planes.Positions[i])
-                                , ColorTools.ArrToV3d(Objects.Planes.Normals[i])
-                                , ColorTools.ArrToV3d(Objects.Planes.Colors[i])
-                                , material                              
-                                ));
-            }
             if (Lightings.PointLights.Number != Lightings.PointLights.Positions.Count())
                 logger.LogWarning("Number of denoted point lightings is different than number of positions!");
             for (int i=0; i<Lightings.PointLights.Number;i++)

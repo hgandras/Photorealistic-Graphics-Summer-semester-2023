@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using OpenTK.Mathematics;
 using System;
+using System.ComponentModel;
 using System.Linq.Expressions;
 using System.Text.Json;
 using System.Xml;
@@ -99,6 +100,7 @@ public class SceneGraph
                                 Vector3d values_vec = ColorTools.ArrToV3d(values_arr);
                                 FinalTransform *=Matrix4d.Transpose(Matrix4d.CreateTranslation(values_vec));
                                 break;
+                            //TODO: Add rotation, both around the world, and the object's coordinate system.
                         }
                     } 
                 }
@@ -143,11 +145,11 @@ public class SceneGraph
         else if(node.Object!=null)
         {
             SceneObject scene_object = node.Object;
-            //Console.WriteLine("Actual transform: \n" + current_transform);
-            //Console.WriteLine("Object pos1: "+node.Object.Position);
             scene_object.Transform(current_transform);
-            //Console.WriteLine("Object pos after: " + node.Object.Position);
-
+            if(scene_object is Plane)
+            {
+                Console.WriteLine(scene_object);
+            }
             if (attributes != null)
             {
                 scene_object.Color = attributes.Color;
