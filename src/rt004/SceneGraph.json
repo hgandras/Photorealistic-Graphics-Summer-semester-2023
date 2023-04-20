@@ -1,44 +1,37 @@
 {
-  "Tansformation": null,
+  "Tansformation": "translate (0,0,0)",
   "Obj": null,
-  "Parent": null,
+  "Attributes": {
+    "Clr": [ 0.9, 0.9, 0.9 ],
+    "Mat": "Phong1",
+    "Scale":1.5
+  },
   "Children": [
     {
-      "Transformation": "translate(1,1,1) rotateX(20)",
+      "Transformation": "translate(0,0,2)",
       "Obj": null,
-      "Parent": null,
       "Children": [
         {
-          "Transformation": "translate(1,1,1) rotateX(20)",
-          "Obj": null,
-          "Parent": null,
+          "Transformation": null,
+          "Obj": "Sphere",
           "Children": null
         },
         {
-          "Transformation": "translate(1,1,1) rotateX(20)",
+          "Transformation": "translate(0,2,0)",
           "Obj": null,
-          "Parent": null,
           "Children": [
             {
-              "Transformation": "translate(1,1,1) rotateX(20)",
-              "Obj": null,
-              "Parent": null,
+              "Transformation": null,
+              "Obj": "Sphere",
               "Children": null
             }
           ]
-        },
-        {
-          "Transformation": "translate(1,1,1) rotateX(20)",
-          "Obj": null,
-          "Parent": null,
-          "Children": null
         }
       ]
     },
     {
       "Transformation": null,
       "Obj":"Sphere",
-      "Parent": null,
       "Children": null
     }
   ]

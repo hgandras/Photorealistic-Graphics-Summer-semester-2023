@@ -6,6 +6,7 @@ using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
+using Microsoft.Win32.SafeHandles;
 using OpenTK.Mathematics;
 using Util;
 using static System.Net.Mime.MediaTypeNames;
@@ -327,10 +328,17 @@ public class SceneEntity
 	/// TODO: Transforms the coordinate system of the object by the given transformation matrix.
 	/// </summary>
 	/// <param name="transform"></param>
-	public void Transform(Matrix4d transform)
+	public void Transform(Matrix4d transform,string sys="world")
 	{
-		
-	}
+		switch(sys)
+		{
+			case "world":
+                homogeneous_pos = transform*homogeneous_pos;
+                break;
+			//TODO: Add case for when the object is rotated around its own system. 
+
+        }
+    }
 
 }
 
@@ -634,6 +642,7 @@ public class SceneObject:SceneEntity,SurfaceProperties
 {
 	public Vector3d Color { get; set; }
 	public Material Material { get; set; }
+	public double Scale { get; set; }
 	
 	public SceneObject()
 	{
@@ -664,11 +673,11 @@ public class SceneObject:SceneEntity,SurfaceProperties
 
 public class Sphere:SceneObject
 {
-	public float Radius;
+	public double Radius { get { return Scale; } set { Scale = value; } }
 	public Vector3d Center { get { return Position; } }
 	public Sphere():base()
 	{
-		Radius = 1;
+		Scale = 1;
 	}
 
 	/// <summary>
@@ -679,7 +688,7 @@ public class Sphere:SceneObject
 	/// <param name="R"></param>
 	public Sphere(Vector3d color, Vector3d Pos,Material material,float R) : base(color,material)
 	{
-		Radius = R;
+		Scale = R;
 		Position = Pos;
 		Material = material;
 	}

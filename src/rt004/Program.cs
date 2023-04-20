@@ -31,6 +31,12 @@ internal class Program
 
         logger.LogInformation("Loading scene graph");
         SceneGraph scenegraph = new SceneGraph("SceneGraph.json");
+        List<SceneObject> objects = scenegraph.RetrieveObjects();
+        Console.WriteLine(objects.Count());
+        foreach(SceneObject sceneObject in objects)
+        {
+            Console.WriteLine("Pos: " + sceneObject.Position+"Color: "+sceneObject.Color+"Material: "+sceneObject.Material);
+        }
         logger.LogInformation("Scene graph loaded!::))");
 
         int wid = config.PlaneConfig.Width;

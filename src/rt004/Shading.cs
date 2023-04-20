@@ -95,7 +95,7 @@ public interface Material
 
 public class Phong1 : Material
 {
-    public double RefractionIndex { get { return 1.5; } }
+    public double RefractionIndex { get { return 4; } }
     public bool Glossy{get{ return true; }}
     public bool Transparent { get { return false; } }
     public ReflectanceModel getReflectance { get { return new Phong(0.1f, 0.8f, 0.2f, 10); } }
@@ -112,7 +112,7 @@ public class Phong2 : Material
 }
 public class Phong3 : Material
 {
-    public double RefractionIndex { get { return 1.5; } }
+    public double RefractionIndex { get { return 4; } }
 
     public ReflectanceModel getReflectance { get { return new Phong(0.1f, 0.6f, 0.4f, 80); } }
 
@@ -123,7 +123,7 @@ public class Phong3 : Material
 
 public class Phong4:Material
 {
-    public double RefractionIndex { get { return 2; } }
+    public double RefractionIndex { get { return 4; } }
     public ReflectanceModel getReflectance { get { return new Phong(0.2f, 0.2f, 0.8f, 400); } }
 
     public bool Glossy { get { return true; } }
