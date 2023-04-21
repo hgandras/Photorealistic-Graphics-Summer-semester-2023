@@ -249,14 +249,13 @@ public class Scene
 		if (sO == null)
 			return BackgroundColor;
 		else
-		{
-			//TODO: If transparent create refractions
-
+		{ 
             //Calculate reflected color values
             if (DisplayShadows)
 			{
 				List<SceneObject> otherObjects = new List<SceneObject>(Objects);
 				otherObjects.Remove(sO);
+				
 				pixel_color += sO.Material.getReflectance.GetReflectedColor(ray, AmbientLighting, LightSources, otherObjects);
 			}
 			else
@@ -265,27 +264,41 @@ public class Scene
 			if (depth++ >= maxDepth )
 				return pixel_color;
 
-            Vector3d SurfaceNormal = sO.SurfaceNormal(ray);
+            Vector4d Norm = sO.SurfaceNormal(ray);
+			Vector3d SurfaceNormal = Norm.Xyz;
+			Vector3d ViewDirection = -ray.Direction;
+			//Appriximate fresnel term for reflection
+            double reflection_coeff = ShadeTools.Schlick(ViewDirection, SurfaceNormal, 1, sO.Material.RefractionIndex);
+			double refraction_coeff = 1 - reflection_coeff;
             if (sO.Material.Glossy)
 			{
 				//Ray direction is taken with negative, since it is casted from the camera, and not from the surface
-				Vector3d ReflectedRayDirection = 2 * Vector3d.Dot(-ray.Direction,SurfaceNormal) * SurfaceNormal + ray.Direction;
+				Vector3d ReflectedRayDirection = 2 * Vector3d.Dot(ViewDirection,SurfaceNormal) * SurfaceNormal + ray.Direction;
 				ReflectedRayDirection = Vector3d.Normalize(ReflectedRayDirection);
 				Ray ReflectedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), ReflectedRayDirection);
 				//Approximate fresnel term
-				double schlick_coeff = ShadeTools.Schlick(-ray.Direction,SurfaceNormal,1,sO.Material.RefractionIndex); 
-				pixel_color += schlick_coeff* RecursiveRayTrace(ReflectedRay, depth);
+				
+				pixel_color += reflection_coeff* RecursiveRayTrace(ReflectedRay, depth);
 			}
 			if(sO.Material.Transparent)
 			{
-				//TODO: Solve material boundaries.
-				double cos_incident = Vector3d.Dot(-ray.Direction, SurfaceNormal);
-				double n_relative = 1.0;
-				double cos_refraction = Math.Sqrt(1-n_relative*n_relative*(1-cos_incident*cos_incident));
-				Vector3d RefractedRayDirection = (n_relative * cos_incident - cos_refraction) * SurfaceNormal - n_relative * ray.Direction;
-				double schlick_coeff = ShadeTools.Schlick(-ray.Direction, SurfaceNormal, 1, sO.Material.RefractionIndex);
-				Ray RefractedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection),RefractedRayDirection);
-				pixel_color += schlick_coeff * RecursiveRayTrace(RefractedRay,depth);
+                //TODO: Solve material boundaries.
+                double Direction = Norm.W;
+                double cos_incident = Vector3d.Dot(ViewDirection, SurfaceNormal);
+				double n_relative;
+				if (Direction == 1)
+					n_relative = sO.Material.RefractionIndex;
+				else
+					n_relative = 1/sO.Material.RefractionIndex;
+				double CritAngleCheck = 1 - n_relative * n_relative * (1 - cos_incident * cos_incident);
+				if (CritAngleCheck >= 0)
+				{
+					double cos_refraction = Math.Sqrt(CritAngleCheck);
+					Vector3d RefractedRayDirection = (n_relative * cos_incident - cos_refraction) * SurfaceNormal - n_relative * ViewDirection;
+					double schlick_coeff = ShadeTools.Schlick(ViewDirection, SurfaceNormal, 1, sO.Material.RefractionIndex);
+					Ray RefractedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), RefractedRayDirection);
+					pixel_color +=  refraction_coeff* RecursiveRayTrace(RefractedRay, depth);
+				}
 			}
 		}
 		return pixel_color;
@@ -637,7 +650,13 @@ public interface SurfaceProperties
 {
     public Material Material { get; set; }
     public float[]? Intersection(Ray ray);
-	public Vector3d SurfaceNormal(Ray ray);
+	/// <summary>
+	///	If the ray input intersects the object, it returns the surface normal of the intersection point. Else it returns a zero vector. The last element 
+	///	of the output vector indicates, whether the ray came from outside, or inside the object. It is 0, if it came from outside, and 1 otherwise.
+	/// </summary>
+	/// <param name="ray"></param>
+	/// <returns></returns>
+	public Vector4d SurfaceNormal(Ray ray);
 }
 
 /// <summary>
@@ -670,9 +689,9 @@ public class SceneObject:SceneEntity,SurfaceProperties
 		return new float[] {float.PositiveInfinity};
 	}
 
-	public virtual Vector3d SurfaceNormal(Ray point)
+	public virtual Vector4d SurfaceNormal(Ray point)
 	{
-		return Vector3d.Zero;
+		return Vector4d.Zero;
 	}
 }
 
@@ -737,12 +756,7 @@ public class Sphere:SceneObject
         return null;
     }
 
-    /// <summary>
-    /// Returns the normal of the sphere, if the ray intersects it. The ray's direction vector should point towards the surface.
-    /// </summary>
-    /// <param name="ray"></param>
-    /// <returns></returns>
-    public override Vector3d SurfaceNormal(Ray ray)
+    public override Vector4d SurfaceNormal(Ray ray)
 	{
 		if(!ray.Intersections.ContainsKey(this))
 		{
@@ -754,8 +768,8 @@ public class Sphere:SceneObject
         Vector3d Normal = Vector3d.Normalize(first_intersection - Center);
         double angle = Vector3d.CalculateAngle(Normal, ray.Direction);
 		if (angle > Math.PI / 2.0 || angle < -Math.PI / 2.0)
-			return Normal;
-		return -Normal;
+			return new Vector4d(Normal,0);
+		return new Vector4d(-Normal,1);
 	}
 }
 
@@ -795,27 +809,22 @@ public class Plane : SceneObject, SurfaceProperties
 	/// <returns>The parameters t of the ray in the intersection points</returns>
     public override float[]? Intersection(Ray ray)
     {
-        float denominator = (float)Vector3d.Dot(ray.Direction, -SurfaceNormal(ray));
+        float denominator = (float)Vector3d.Dot(ray.Direction, -SurfaceNormal(ray).Xyz);
         if (denominator >Globals.ROUNDING_ERR )
         {
-            float numerator = (float)Vector3d.Dot((Position - ray.Origin),-SurfaceNormal(ray));
+            float numerator = (float)Vector3d.Dot((Position - ray.Origin),-SurfaceNormal(ray).Xyz);
 			if(numerator/denominator>Globals.ROUNDING_ERR)
                 return new float[] { numerator / denominator };
 		}
         return null;
     }
 
-    /// <summary>
-    /// Returns the normal of the plane in the direction the ray intersects it. The ray's direction vector should point towards the surface.
-    /// </summary>
-    /// <param name="point"></param>
-    /// <returns></returns>
-    public override Vector3d SurfaceNormal(Ray ray)
+    public override Vector4d SurfaceNormal(Ray ray)
 	{     
         double angle = Vector3d.CalculateAngle(Normal, ray.Direction);
 		if (angle > Math.PI / 2.0 || angle<-Math.PI/2.0)
-			return Normal;
-		return -Normal;
+			return new Vector4d(Normal, 0);
+		return new Vector4d(-Normal, 0);
 	}
 }
 

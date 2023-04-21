@@ -125,8 +125,7 @@ public class SceneGraph
                 SetUpParams(child);
             }
         }
-        return;
-        
+        return; 
     }
 
     private List<SceneObject> traverse(Node node,Matrix4d transform,Attribs? attribs)

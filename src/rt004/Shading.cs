@@ -40,7 +40,7 @@ public class Phong:ReflectanceModel
             return ambient_lighting;                                     //no light sources in the scene, the pixel value
                                                                          //is just the ambient lighting
         Vector3d intersection_point = ray.GetRayPoint(ray.FirstIntersection);
-        Vector3d surface_normal = ray.FirstIntersectedObject.SurfaceNormal(ray);
+        Vector3d surface_normal = ray.FirstIntersectedObject.SurfaceNormal(ray).Xyz;
 
         Vector3d view_direction=-ray.Direction;
 
@@ -95,9 +95,9 @@ public interface Material
 
 public class Phong1 : Material
 {
-    public double RefractionIndex { get { return 2; } }
-    public bool Glossy{get{ return true; }}
-    public bool Transparent { get { return false; } }
+    public double RefractionIndex { get { return 1; } }
+    public bool Glossy{get{ return false; }}
+    public bool Transparent { get { return true; } }
     public ReflectanceModel getReflectance { get { return new Phong(0.1f, 0.8f, 0.2f, 10); } }
 }
 public class Phong2 : Material
