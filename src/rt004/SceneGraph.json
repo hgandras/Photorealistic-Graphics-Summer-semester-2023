@@ -24,6 +24,19 @@
               "Obj": "Sphere"
             }
           ]
+        },
+        {
+          "Transformation": "translate(-2,-0.3,4)",
+          "Attributes": {
+            "Clr": [ 0.9, 0.4, 0.4 ],
+            "Mat": "Phong3",
+            "Scale": 1
+          },
+          "Children": [
+            {
+              "Obj": "Sphere"
+            }
+          ]
         }
       ]
     },

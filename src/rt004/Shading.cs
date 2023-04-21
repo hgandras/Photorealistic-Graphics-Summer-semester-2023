@@ -116,7 +116,7 @@ public class Phong3 : Material
 
     public ReflectanceModel getReflectance { get { return new Phong(0.1f, 0.6f, 0.4f, 80); } }
 
-    public bool Glossy { get { return true; } }
+    public bool Glossy { get { return false; } }
 
     public bool Transparent { get { return false; } }
 }
