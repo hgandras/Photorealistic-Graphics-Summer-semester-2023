@@ -265,20 +265,27 @@ public class Scene
 			if (depth++ >= maxDepth )
 				return pixel_color;
 
-			if (sO.Material.Glossy)
+            Vector3d SurfaceNormal = sO.SurfaceNormal(ray);
+            if (sO.Material.Glossy)
 			{
-				Vector3d SurfaceNormal = sO.SurfaceNormal(ray);
 				//Ray direction is taken with negative, since it is casted from the camera, and not from the surface
 				Vector3d ReflectedRayDirection = 2 * Vector3d.Dot(-ray.Direction,SurfaceNormal) * SurfaceNormal + ray.Direction;
 				ReflectedRayDirection = Vector3d.Normalize(ReflectedRayDirection);
 				Ray ReflectedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), ReflectedRayDirection);
-				//Approximated fresnel term, added
+				//Approximate fresnel term
 				double schlick_coeff = ShadeTools.Schlick(-ray.Direction,SurfaceNormal,1,sO.Material.RefractionIndex); 
 				pixel_color += schlick_coeff* RecursiveRayTrace(ReflectedRay, depth);
 			}
 			if(sO.Material.Transparent)
 			{
-				//TODO: Cast ray for refraction
+				//TODO: Solve material boundaries.
+				double cos_incident = Vector3d.Dot(-ray.Direction, SurfaceNormal);
+				double n_relative = 1.0;
+				double cos_refraction = Math.Sqrt(1-n_relative*n_relative*(1-cos_incident*cos_incident));
+				Vector3d RefractedRayDirection = (n_relative * cos_incident - cos_refraction) * SurfaceNormal - n_relative * ray.Direction;
+				double schlick_coeff = ShadeTools.Schlick(-ray.Direction, SurfaceNormal, 1, sO.Material.RefractionIndex);
+				Ray RefractedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection),RefractedRayDirection);
+				pixel_color += schlick_coeff * RecursiveRayTrace(RefractedRay,depth);
 			}
 		}
 		return pixel_color;
@@ -418,6 +425,8 @@ public class Ray
     {
 		return Origin+t*Direction;
     }
+
+	
 }
 
 public class Camera : SceneEntity
@@ -728,22 +737,25 @@ public class Sphere:SceneObject
         return null;
     }
 
-	/// <summary>
-	/// Returns the normal of a given point, if it is on the sphere. (Not the most general function, maybe 
-	/// parameterizing the sphere by azimuth and zenith angle would be better).
-	/// </summary>
-	/// <param name="point"></param>
-	/// <returns></returns>
-	public override Vector3d SurfaceNormal(Ray ray)
+    /// <summary>
+    /// Returns the normal of the sphere, if the ray intersects it. The ray's direction vector should point towards the surface.
+    /// </summary>
+    /// <param name="ray"></param>
+    /// <returns></returns>
+    public override Vector3d SurfaceNormal(Ray ray)
 	{
-		if (!ray.Intersections.ContainsKey(this))
+		if(!ray.Intersections.ContainsKey(this))
 		{
 			float[]? intersections = Intersection(ray);
 			if(intersections!=null)
 				ray.Intersections.Add(this, intersections);
 		}
-		Vector3d first_intersection=ray.GetRayPoint(ray.FirstIntersection);
-		return Vector3d.Normalize(first_intersection-Center);
+        Vector3d first_intersection = ray.GetRayPoint(ray.FirstIntersection);
+        Vector3d Normal = Vector3d.Normalize(first_intersection - Center);
+        double angle = Vector3d.CalculateAngle(Normal, ray.Direction);
+		if (angle > Math.PI / 2.0 || angle < -Math.PI / 2.0)
+			return Normal;
+		return -Normal;
 	}
 }
 
@@ -786,7 +798,7 @@ public class Plane : SceneObject, SurfaceProperties
         float denominator = (float)Vector3d.Dot(ray.Direction, -SurfaceNormal(ray));
         if (denominator >Globals.ROUNDING_ERR )
         {
-            float numerator = (float)Vector3d.Dot((Position - ray.Origin), -SurfaceNormal(ray));
+            float numerator = (float)Vector3d.Dot((Position - ray.Origin),-SurfaceNormal(ray));
 			if(numerator/denominator>Globals.ROUNDING_ERR)
                 return new float[] { numerator / denominator };
 		}
@@ -794,23 +806,18 @@ public class Plane : SceneObject, SurfaceProperties
     }
 
     /// <summary>
-    /// Returns the normal of the plane in the direction the ray intersects it.
+    /// Returns the normal of the plane in the direction the ray intersects it. The ray's direction vector should point towards the surface.
     /// </summary>
     /// <param name="point"></param>
     /// <returns></returns>
     public override Vector3d SurfaceNormal(Ray ray)
-	{
-        //If the angle is larger than 90 degrees, that means the ray is on that side of the 
-        //plane 
-        
+	{     
         double angle = Vector3d.CalculateAngle(Normal, ray.Direction);
-		if (angle > Math.PI / 2.0 && angle<-Math.PI/2.0)
-			return -Normal;
-		return Normal;
+		if (angle > Math.PI / 2.0 || angle<-Math.PI/2.0)
+			return Normal;
+		return -Normal;
 	}
 }
-
-
 
 /// <summary>
 /// In case something lighting sepcific comes to my mind. Light 
