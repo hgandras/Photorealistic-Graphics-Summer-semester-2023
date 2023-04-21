@@ -53,7 +53,7 @@ public class Config
 /// </summary>
 public class GeneralConfig
 {   
-    public string fileName { get;   set; } 
+    public string fileName { get; set; } 
     public string color1{ get; set; }
     public string color2 { get; set; }
 }

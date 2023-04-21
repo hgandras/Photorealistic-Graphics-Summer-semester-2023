@@ -103,7 +103,7 @@ public class Phong1 : Material
 public class Phong2 : Material
 {
     public double RefractionIndex { get { return 4; } }
-
+    
     public ReflectanceModel getReflectance { get { return new Phong(0.1f, 0.5f, 0.5f, 150); } }
 
     public bool Glossy { get { return true; } }

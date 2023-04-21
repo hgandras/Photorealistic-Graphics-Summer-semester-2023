@@ -29,15 +29,6 @@ namespace rt004;
  * COMMENT: When we add a camera to the Scene, it should be bounded, and the camera should have the world up vector as its field, so
  * the X,Y,Z basis vectors in world coordinates can be accessed as a property. A camera can also be removed, so its world up Vector3d 
  * can be set to null. Or a camera just simply has the scene it is contained in as a field, so it can acces its properties.
- * 
- * TODO: Implement other shapes, light source, and camera types if I have time. Maybe implement another shading method.
- * 
- * TODO: Modify the intersection function that the ray should be in the world's coordinate system rather than in the 
- *		 camera's system.
- *		 
- * TODO: Create getters for the transformation matrices of scene entities, and use them in the scene representation tree
- * 
- * TODO: Add samples per pixel to the config file
  */
 
 public class Scene
@@ -65,16 +56,6 @@ public class Scene
 	private List<Camera> Cameras;
 	private List<LightSource> LightSources;
     private ILogger logger;
-
-	/// <summary>
-	/// Empty constructor, so Scene can be initialized without config.
-	/// TODO: Either implement this, or delete.
-	/// </summary>
-	public Scene()
-	{
-		Objects = new List<SceneObject>();
-		Cameras = new List<Camera>();
-	}
 
 	/// <summary>
 	/// Constructor for the scene, sets it up based on the config file.
@@ -197,8 +178,7 @@ public class Scene
 	/// <summary>
 	/// For each pixel in the plane get generate the ray direction vectors. After that, for all rays, calculate 
 	/// the intersection of all objects in the scene, and based on that the reflection, and the pixel color value
-	/// in float. 
-	/// TODO: This part can be parallelized.
+	/// in float.
 	/// </summary>
 	/// <param name="width"></param>
 	/// <param name="height"></param>
@@ -270,20 +250,18 @@ public class Scene
 			//Appriximate fresnel term for reflection
             double reflection_coeff = ShadeTools.Fresnel(ViewDirection, SurfaceNormal, 1, sO.Material.RefractionIndex);
 			double refraction_coeff = 1 - reflection_coeff;
-			//Console.WriteLine(reflection_coeff);
             if (sO.Material.Glossy)
 			{
 				//Ray direction is taken with negative, since it is casted from the camera, and not from the surface
 				Vector3d ReflectedRayDirection = 2 * Vector3d.Dot(ViewDirection,SurfaceNormal) * SurfaceNormal + ray.Direction;
 				ReflectedRayDirection = Vector3d.Normalize(ReflectedRayDirection);
 				Ray ReflectedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), ReflectedRayDirection);
-				//Approximate fresnel term
 				
 				pixel_color += reflection_coeff* RecursiveRayTrace(ReflectedRay, depth);
 			}
 			if(sO.Material.Transparent)
 			{
-                //TODO: Solve material boundaries.
+                //TODO: Solve material boundaries. Right now it assumes that solids are only in contact with air, and no other solids.
                 double Direction = Norm.W;
                 double cos_incident = Vector3d.Dot(ViewDirection, SurfaceNormal);
 				double n_relative;
@@ -361,8 +339,6 @@ public class SceneEntity
 
 /// <summary>
 /// Contains plane properties, these are right now are the height/width in pixel.
-/// TODO: Decide whether the plane properties will just be part of the camera class, because most of its 
-/// parameters are projection specific.
 /// </summary>
 public class ProjectionPlane
 {
@@ -616,8 +592,8 @@ public class PerspectiveCamera:Camera
 	}
 
 	/// <summary>
-	/// TODO: Add support for multiple ray casts per pixel. It should return a list of Ray objects, and 
-	/// also divide the pixel properly. Maybe add random and uniform sampling per pixel.
+	/// Casts the given number of rays with through the plane through the given pixel. Inside the pixel the location the ray is going through is 
+	/// chosen with a uniform distribution.
 	/// </summary>
 	/// <param name="plane">The plane to project to </param>
 	/// <param name="px_x"></param>
@@ -625,7 +601,6 @@ public class PerspectiveCamera:Camera
 	/// <param name="ray_per_pixel">The number of rays to be casted through a pixel. The ray's direction is chosen randomly within the square with a 
 	/// uniform distribution.</param>
 	/// <returns>The ray's direction vector in the camera coordinate system.</returns>
-	/// <exception cref="NotImplementedException"></exception>
 	public override List<Ray> CastRay(ProjectionPlane plane, int px_x, int px_y,int ray_per_pixel=1)
 	{
 		List<Ray> rays = new List<Ray>();

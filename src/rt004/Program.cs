@@ -22,7 +22,6 @@ internal class Program
   static void Main(string[] args)
   {
         var logger = Logging.CreateLogger<Program>();
-        // Parameters.
         //Default parameters are specified in the config file, and the command-line arguments 
         //can overwrite them.
         Config config=new Config("Config.json");
@@ -146,10 +145,6 @@ internal class Program
         logger.LogInformation("Demo HDR image created");
         //Create scene, and generate the image;
         Scene scene = new Scene(config);
-        /* 
-         * Here methods of the scene can be called (the ones that are implemented), like adding an object, pointing the camera to an added object, 
-         * or simply doing any transformation with the camera. The default scene set up is defined by the config file.
-         */
         FloatImage img=scene.SynthesizeImage();
         img.SavePFM("PathTrace.pfm");
         logger.LogInformation("Path traced image created");
