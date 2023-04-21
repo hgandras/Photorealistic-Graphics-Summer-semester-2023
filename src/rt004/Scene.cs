@@ -268,8 +268,9 @@ public class Scene
 			Vector3d SurfaceNormal = Norm.Xyz;
 			Vector3d ViewDirection = -ray.Direction;
 			//Appriximate fresnel term for reflection
-            double reflection_coeff = ShadeTools.Schlick(ViewDirection, SurfaceNormal, 1, sO.Material.RefractionIndex);
+            double reflection_coeff = ShadeTools.Fresnel(ViewDirection, SurfaceNormal, 1, sO.Material.RefractionIndex);
 			double refraction_coeff = 1 - reflection_coeff;
+			//Console.WriteLine(reflection_coeff);
             if (sO.Material.Glossy)
 			{
 				//Ray direction is taken with negative, since it is casted from the camera, and not from the surface

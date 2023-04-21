@@ -11,6 +11,19 @@
       "Children": [
         {
           "Obj": "Sphere"
+        },
+        {
+          "Transformation": "translate(2,-0.3,4)",
+          "Attributes": {
+            "Clr": [ 0.4, 0.4, 0.9 ],
+            "Mat": "Phong2",
+            "Scale": 1
+          },
+          "Children": [
+            {
+              "Obj": "Sphere"
+            }
+          ]
         }
       ]
     },
