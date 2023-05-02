@@ -1,11 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using OpenTK.Mathematics;
-using System;
-using System.ComponentModel;
-using System.Linq.Expressions;
 using System.Text.Json;
-using System.Xml;
-using static rt004.SceneConfig;
 
 namespace rt004;
 

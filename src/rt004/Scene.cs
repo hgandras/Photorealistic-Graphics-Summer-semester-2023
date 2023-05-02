@@ -1,15 +1,6 @@
-﻿using System;
-using System.ComponentModel;
-using System.Drawing;
-using System.Numerics;
-using System.Reflection.Metadata.Ecma335;
-using System.Runtime.CompilerServices;
-using System.Security.Cryptography.X509Certificates;
-using Microsoft.Extensions.Logging;
-using Microsoft.Win32.SafeHandles;
+﻿using Microsoft.Extensions.Logging;
 using OpenTK.Mathematics;
 using Util;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace rt004;
 
