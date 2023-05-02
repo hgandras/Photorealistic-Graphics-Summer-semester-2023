@@ -114,9 +114,7 @@ public class SceneGraph
     /// </summary>
     private void SetUpParams(Node node)
     {
-        //Set up parents
-        
-        
+        //Set up parents 
         if (node.Children != null)
         {
             foreach (Node child in node.Children)
@@ -171,7 +169,6 @@ public class SceneGraph
     /// </summary>
     public List<SceneObject> RetrieveObjects()
     {
-        //Console.WriteLine(Root.Attributes.Material+" "+Root.Attributes.Material);
         List<SceneObject> objects = traverse(Root,Root.Transform,Root.Attributes);
         return objects;
     }

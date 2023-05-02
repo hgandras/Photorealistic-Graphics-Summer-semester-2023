@@ -106,35 +106,7 @@ public class SceneConfig
             logger.LogWarning("Not all object's attributes were specified in config file properly. Not all objects were added to the scene.");
         }
     }
-    public class Obj
-    {
-        /// <summary>
-        /// Creates objects that are in the scene with the given properties. 
-        /// </summary>
-        
-        public class SphereObjects
-        {
-            public int Number { get; set; }
-
-            public string Instance = "Sphere";
-            public List<float[]> Positions { get; set; }
-            public List<float[]> Colors { get; set; }
-            public List<string> Materials { get; set; }
-            public float[] Radiuses { get; set; } 
-        }
-        public class PlaneObjects
-        {
-            public string Instance = "Plane";
-            public int Number { get; set; }
-            public List<float[]> Normals { get; set; }
-            public List<float[]> Positions { get; set; }
-            public List<float[]> Colors { get; set; }
-            public List<string> Materials { get; set; }
-        }
-        public SphereObjects Spheres { get; set; }
-        public PlaneObjects Planes { get; set; }
-
-    }
+    
     public class Lights
     {
         public class PointLighings
@@ -156,7 +128,6 @@ public class SceneConfig
         public DirectionalLightings DirectionalLights { get; set; }
 
     }
-    public Obj Objects { get; set; }
     public Lights Lightings { get; set; }
     
     public List<float[]> PointLightPositions { get; set; }

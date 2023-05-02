@@ -66,48 +66,4 @@ public class MathTools
 
 }
 
-public static class ShadeTools
-{
-    /// <summary>
-    /// Calculates the approximate fresnel term.
-    /// </summary> 
-    /// <param name="incoming_ray">A vector pointing from the incident point to the light source</param>
-    /// <param name="incident_surface_normal">The surface normal at the incident point</param>
-    /// <param name="n_1"></param>
-    /// <param name="n_2"></param>>
-    /// <returns>A double representing the intensity of the reflected light from the surface</returns>
-    public static double Schlick(Vector3d incoming_light_dir,Vector3d incident_surface_normal,double n_1,double n_2)
-    {
-        double R0 = Math.Pow((n_1-n_2)/(n_1+n_2),2);
-        double cos_theta = Vector3d.Dot(incoming_light_dir,incident_surface_normal);
-        return R0 + (1 - R0) * Math.Pow(1 - cos_theta,5);
-    }
-
-    /// <summary>
-    /// Calculates the fresnel term.
-    /// </summary> 
-    /// <param name="incoming_ray">A vector pointing from the incident point to the light source</param>
-    /// <param name="incident_surface_normal">The surface normal at the incident point</param>
-    /// <param name="n_1"></param>
-    /// <param name="n_2"></param>>
-    /// <returns>Returns the intensity of the reflected light from the surface</returns>
-    public static double Fresnel(Vector3d incoming_light_dir,Vector3d incident_surface_normal,double n_1,double n_2)
-    {
-        double cos_incident = Vector3d.Dot(incoming_light_dir,incident_surface_normal);
-        double n_relative = n_1 / n_2;
-        double CritAngleCheck = 1 - n_relative * n_relative * (1 - cos_incident * cos_incident);
-        if(CritAngleCheck>=0)
-        {
-            double cos_refracted = Math.Sqrt(CritAngleCheck);
-
-            //S polarized intensity
-            double F_s = Math.Pow((n_2*cos_incident-n_1*cos_refracted)/(n_2*cos_incident+n_1*cos_refracted),2);
-            //P polarized light
-            double F_p= Math.Pow((n_1*cos_refracted-n_2*cos_incident)/(n_1*cos_refracted+n_2*cos_incident), 2);
-
-            return (F_s + F_p) / 2;
-        }
-        return 1;
-    }
-}
 

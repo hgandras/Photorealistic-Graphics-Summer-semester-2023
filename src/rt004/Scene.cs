@@ -274,7 +274,6 @@ public class Scene
 				{
 					double cos_refraction = Math.Sqrt(CritAngleCheck);
 					Vector3d RefractedRayDirection = (n_relative * cos_incident - cos_refraction) * SurfaceNormal - n_relative * ViewDirection;
-					double schlick_coeff = ShadeTools.Schlick(ViewDirection, SurfaceNormal, 1, sO.Material.RefractionIndex);
 					Ray RefractedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), RefractedRayDirection);
 					pixel_color +=  refraction_coeff* RecursiveRayTrace(RefractedRay, depth);
 				}
@@ -355,7 +354,6 @@ public class ProjectionPlane
 		Height = config.Height;
 		Width = config.Width;
 		RayPerPixel = config.RayPerPixel;
-
 	}
 }
 
@@ -373,15 +371,17 @@ public class Ray
     /// it contains only those objects as keys, that were intersected, so there are no null values.
     /// </summary>
     public Dictionary<SceneObject, float[]> Intersections=new Dictionary<SceneObject, float[]>();
+
 	/// <summary>
 	/// Returns the first object that the ray encountered, based on the t value intervals in the Intersections property.
 	/// </summary>
 	public SceneObject? FirstIntersectedObject { 
-		get {
+		get 
+		{
 			Dictionary<SceneObject,float> first_intersection= Intersections.ToDictionary(k=>k.Key,v=>v.Value.Min());
 			SceneObject? fi =first_intersection.Values.Count()==0 ? null: first_intersection.MinBy(kvp => kvp.Value).Key;
 			return fi; 
-			} 
+		} 
 	}
 	
 	/// <summary>
@@ -395,7 +395,7 @@ public class Ray
 	}
 
 	/// <summary>
-	/// Origing, and direction. The constructor normalizes them before assigning it to its fields.
+	/// Origin, and direction. The constructor normalizes them before assigning it to its fields.
 	/// </summary>
 	/// <param name="origin"></param>
 	/// <param name="direction"></param>
@@ -725,7 +725,6 @@ public class Sphere:SceneObject
 			float t = (float)(-b / 2 * a);
 			if (t > Globals.ROUNDING_ERR)
 				intersectionPoints.Add(t);
-			
 		}
 		if (intersectionPoints.Count() > 0)
 			return intersectionPoints.ToArray();
@@ -766,7 +765,7 @@ public class Plane : SceneObject, SurfaceProperties
 	}
 
 	/// <summary>
-	/// Creates a parametric equation of a plane from the normal, and a point that lies on the plane. 
+	/// Creates the plane from the normal, and a point that lies on the plane. 
 	/// </summary>
 	/// <param name="Point"></param>
 	/// <param name="Normal"></param>
