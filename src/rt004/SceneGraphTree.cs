@@ -95,7 +95,12 @@ public class SceneGraph
                                 Vector3d values_vec = ColorTools.ArrToV3d(values_arr);
                                 FinalTransform *=Matrix4d.Transpose(Matrix4d.CreateTranslation(values_vec));
                                 break;
-                            //TODO: Add rotation, both around the world, and the object's coordinate system.
+                            case "rotate":
+                                Matrix4d rotX = Matrix4d.CreateRotationX(values_arr[0]);
+                                Matrix4d rotY = Matrix4d.CreateRotationY(values_arr[1]);
+                                Matrix4d rotZ = Matrix4d.CreateRotationZ(values_arr[2]);
+                                FinalTransform = rotX * rotZ * rotY;
+                                break;
                         }
                     } 
                 }
