@@ -37,9 +37,9 @@ public class Scene
 	public int LightSourceCount { get { return LightSources.Count(); } }
 
     //Current scene entities
-    public LightSource LightSource;
+    public LightSource? LightSource;
     public Camera Cam;
-    public SceneObject Object;
+    public SceneObject? Object;
 	public bool DisplayShadows;
 
 	//Private lists for storing all scene entities
@@ -187,6 +187,8 @@ public class Scene
 				//Transform ray to world coordinate system
 				foreach (Ray ray in rays)
 				{
+					//TODO:Add a check here, whether the ray is inside an object, to decide the 
+					//refraction index.
 					ray.Origin = Cam.Position;
 					ray.Direction = Vector3d.Normalize((Matrix4d.Invert(Cam.CameraTransformMatrix) * new Vector4d(ray.Direction, 1)).Xyz - ray.Origin);
 					int Depth = 0;
@@ -216,8 +218,8 @@ public class Scene
                 ray.Intersections.Add(Objects[i], intersections);
             }
         }
-        SceneObject? sO = ray.FirstIntersectedObject;
-		if (sO == null)
+        SceneObject? FirstIntersectedObject = ray.FirstIntersectedObject;
+		if (FirstIntersectedObject == null)
 			return BackgroundColor;
 		else
 		{ 
@@ -225,47 +227,47 @@ public class Scene
             if (DisplayShadows)
 			{
 				List<SceneObject> otherObjects = new List<SceneObject>(Objects);
-				otherObjects.Remove(sO);
+				otherObjects.Remove(FirstIntersectedObject);
 				
-				pixel_color += sO.Material.getReflectance.GetReflectedColor(ray, AmbientLighting, LightSources, otherObjects);
+				pixel_color += FirstIntersectedObject.Material.getReflectance.GetReflectedColor(ray, AmbientLighting, LightSources, otherObjects);
 			}
 			else
-				pixel_color += sO.Material.getReflectance.GetReflectedColor(ray, AmbientLighting, LightSources);
+				pixel_color += FirstIntersectedObject.Material.getReflectance.GetReflectedColor(ray, AmbientLighting, LightSources);
 
 			if (depth++ >= maxDepth )
 				return pixel_color;
 
-            Vector4d Norm = sO.SurfaceNormal(ray);
+            Vector4d Norm = FirstIntersectedObject.SurfaceNormal(ray);
 			Vector3d SurfaceNormal = Norm.Xyz;
-			Vector3d ViewDirection = -ray.Direction;
+            //Ray direction is taken with negative, since it is casted from the camera, and not from the surface
+            Vector3d ViewDirection = -ray.Direction;
 			//Appriximate fresnel term for reflection
-            double reflection_coeff = ShadeTools.Fresnel(ViewDirection, SurfaceNormal, 1, sO.Material.RefractionIndex);
+            double reflection_coeff = ShadeTools.Fresnel(ViewDirection, SurfaceNormal, ray.IndexOfRefraction, FirstIntersectedObject.Material.RefractionIndex);
 			double refraction_coeff = 1 - reflection_coeff;
-            if (sO.Material.Glossy)
+            if (FirstIntersectedObject.Material.Glossy)
 			{
-				//Ray direction is taken with negative, since it is casted from the camera, and not from the surface
 				Vector3d ReflectedRayDirection = 2 * Vector3d.Dot(ViewDirection,SurfaceNormal) * SurfaceNormal + ray.Direction;
 				ReflectedRayDirection = Vector3d.Normalize(ReflectedRayDirection);
-				Ray ReflectedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), ReflectedRayDirection);
+				Ray ReflectedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), ReflectedRayDirection,FirstIntersectedObject.Material.RefractionIndex);
 				
 				pixel_color += reflection_coeff* RecursiveRayTrace(ReflectedRay, depth);
 			}
-			if(sO.Material.Transparent)
+			if(FirstIntersectedObject.Material.Transparent)
 			{
                 //TODO: Solve material boundaries. Right now it assumes that solids are only in contact with air, and no other solids.
                 double Direction = Norm.W;
                 double cos_incident = Vector3d.Dot(ViewDirection, SurfaceNormal);
 				double n_relative;
 				if (Direction == 1)
-					n_relative = sO.Material.RefractionIndex;
+					n_relative = FirstIntersectedObject.Material.RefractionIndex/ray.IndexOfRefraction;
 				else
-					n_relative = 1/sO.Material.RefractionIndex;
+					n_relative = ray.IndexOfRefraction/FirstIntersectedObject.Material.RefractionIndex;
 				double CritAngleCheck = 1 - n_relative * n_relative * (1 - cos_incident * cos_incident);
 				if (CritAngleCheck >= 0)
 				{
 					double cos_refraction = Math.Sqrt(CritAngleCheck);
 					Vector3d RefractedRayDirection = (n_relative * cos_incident - cos_refraction) * SurfaceNormal - n_relative * ViewDirection;
-					Ray RefractedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), RefractedRayDirection);
+					Ray RefractedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), RefractedRayDirection,FirstIntersectedObject.Material.RefractionIndex);
 					pixel_color +=  refraction_coeff* RecursiveRayTrace(RefractedRay, depth);
 				}
 			}
@@ -355,6 +357,7 @@ public class Ray
 {
     public Vector3d Origin;
     public Vector3d Direction;
+	public double IndexOfRefraction;
 
     /// <summary>
     /// Used when the intersection function is called. It stores the intersections of each 
@@ -386,14 +389,20 @@ public class Ray
 	}
 
 	/// <summary>
-	/// Origin, and direction. The constructor normalizes them before assigning it to its fields.
+	/// Origin, and direction. The constructor normalizes them before assigning it to its fields. An
+	/// index of refraction can also be assigned to the constructor. It indicates the medium the 
+	/// ray originates from, or is going through. We can assume that the ray goes through only one 
+	/// medium, since a new ray is always casted when a surface is reached. If the ray is used 
+	/// for other purposes, like calculating shadows, this parameter is not used in those cases
+	/// anymway. 
 	/// </summary>
 	/// <param name="origin"></param>
 	/// <param name="direction"></param>
-	public Ray(Vector3d origin, Vector3d direction)
+	public Ray(Vector3d origin, Vector3d direction,double IOR=1)
 	{
 		Origin = origin;
 		Direction = direction==Vector3d.Zero?direction:Vector3d.Normalize(direction);
+		IndexOfRefraction = IOR;
 	}
 
 	/// <summary>
@@ -406,8 +415,6 @@ public class Ray
     {
 		return Origin+t*Direction;
     }
-
-	
 }
 
 public class Camera : SceneEntity

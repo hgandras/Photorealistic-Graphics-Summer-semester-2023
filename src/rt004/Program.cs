@@ -2,7 +2,6 @@
 using System.Drawing;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
-//using System.Numerics;
 
 namespace rt004;
 
