@@ -39,13 +39,15 @@ public class Scene
     //Current scene entities
     public LightSource? LightSource;
     public Camera Cam;
-    public SceneObject? Object;
+    public Shape? Object;
 	public bool DisplayShadows;
 
-	//Private lists for storing all scene entities
-	private List<SceneObject> Objects;
-	private List<Camera> Cameras;
-	private List<LightSource> LightSources;
+	//Lists for storing all scene entities
+	public List<Shape> Objects;
+	public List<Camera> Cameras;
+	public List<LightSource> LightSources;
+
+	//Logger
     private ILogger logger;
 
 	/// <summary>
@@ -62,6 +64,7 @@ public class Scene
 		{
 			new PerspectiveCamera(config.CameraConfig,this)
 		};
+		Cameras[0].BindScene(this);
         Cam = Cameras[0];
 		WorldUpDirection = ColorTools.ArrToV3d(config.SceneConfig.WorldUpDirection); 
 		AmbientLighting =ColorTools.ArrToV3d(config.SceneConfig.AmbientLighting);
@@ -75,9 +78,9 @@ public class Scene
 		{
 			foreach(LightSource ls in config.SceneConfig.LightSources)
 			{
-				logger.LogInformation("Light source {} added to scene",ls.GetType());
 				AddLightSource(ls);
-			}
+                logger.LogInformation("Light source {} added to scene", ls.GetType());
+            }
 			logger.LogInformation("Scene initialized with {} objects, and {} light sources", ObjectCount,LightSourceCount);
         }
 		catch(IndexOutOfRangeException)
@@ -95,7 +98,7 @@ public class Scene
 	/// <param name="shape">String that represents the object type. Possible values: Sphere</param>
 	public void AddObject(string shape)
 	{
-		SceneObject new_object;
+		Shape new_object;
 		switch(shape)
 		{
 			case "Sphere":
@@ -109,7 +112,7 @@ public class Scene
 				break;
         }
     }
-	public void AddObject(SceneObject scene_object)
+	public void AddObject(Shape scene_object)
 	{
 		Objects.Add(scene_object);
 	}
@@ -182,15 +185,13 @@ public class Scene
 			for(int w=0;w<Plane.Width;w++)
 			{
 				//Cast the rays for each h,w pixel
-				List<Ray> rays=Cam.CastRay(Plane, w, h,Plane.RayPerPixel);
+				List<Ray> rays=Cam.CastRay(Plane, w, h,Plane.RayPerPixel,false);
 				Vector3d final_color = Vector3d.Zero;
 				//Transform ray to world coordinate system
 				foreach (Ray ray in rays)
 				{
 					//TODO:Add a check here, whether the ray is inside an object, to decide the 
 					//refraction index.
-					ray.Origin = Cam.Position;
-					ray.Direction = Vector3d.Normalize((Matrix4d.Invert(Cam.CameraTransformMatrix) * new Vector4d(ray.Direction, 1)).Xyz - ray.Origin);
 					int Depth = 0;
 					final_color += RecursiveRayTrace(ray, Depth);	
 				}
@@ -200,39 +201,17 @@ public class Scene
 		return image;
 	}
 
-	/// <summary>
-	/// 
-	/// </summary>
-	/// <param name="ray"></param>
-	/// <param name="depth"></param>
-	/// <returns></returns>
+
 	private Vector3d RecursiveRayTrace(Ray ray,int depth)
 	{
         Vector3d pixel_color = Vector3d.Zero;
-        for (int i = 0; i < Objects.Count(); i++)
-        {
-			//Calculate ray intersections
-            float[]? intersections = Objects[i].Intersection(ray);
-            if (intersections != null)
-            {
-                ray.Intersections.Add(Objects[i], intersections);
-            }
-        }
-        SceneObject? FirstIntersectedObject = ray.FirstIntersectedObject;
+        Shape? FirstIntersectedObject = ray.FirstIntersectedObject;
 		if (FirstIntersectedObject == null)
 			return BackgroundColor;
 		else
 		{ 
             //Calculate reflected color values
-            if (DisplayShadows)
-			{
-				List<SceneObject> otherObjects = new List<SceneObject>(Objects);
-				otherObjects.Remove(FirstIntersectedObject);
-				
-				pixel_color += FirstIntersectedObject.Material.getReflectance.GetReflectedColor(ray, AmbientLighting, LightSources, otherObjects);
-			}
-			else
-				pixel_color += FirstIntersectedObject.Material.getReflectance.GetReflectedColor(ray, AmbientLighting, LightSources);
+			pixel_color += FirstIntersectedObject.Material.getReflectance.GetReflectedColor(ray, AmbientLighting, LightSources,DisplayShadows);
 
 			if (depth++ >= maxDepth )
 				return pixel_color;
@@ -242,14 +221,13 @@ public class Scene
             //Ray direction is taken with negative, since it is casted from the camera, and not from the surface
             Vector3d ViewDirection = -ray.Direction;
 			//Appriximate fresnel term for reflection
-            double reflection_coeff = ShadeTools.Fresnel(ViewDirection, SurfaceNormal, ray.IndexOfRefraction, FirstIntersectedObject.Material.RefractionIndex);
+            double reflection_coeff = ShadeTools.Fresnel(ViewDirection, SurfaceNormal, 1, FirstIntersectedObject.Material.RefractionIndex);
 			double refraction_coeff = 1 - reflection_coeff;
             if (FirstIntersectedObject.Material.Glossy)
 			{
 				Vector3d ReflectedRayDirection = 2 * Vector3d.Dot(ViewDirection,SurfaceNormal) * SurfaceNormal + ray.Direction;
 				ReflectedRayDirection = Vector3d.Normalize(ReflectedRayDirection);
-				Ray ReflectedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), ReflectedRayDirection,FirstIntersectedObject.Material.RefractionIndex);
-				
+				Ray ReflectedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), ReflectedRayDirection);
 				pixel_color += reflection_coeff* RecursiveRayTrace(ReflectedRay, depth);
 			}
 			if(FirstIntersectedObject.Material.Transparent)
@@ -259,15 +237,15 @@ public class Scene
                 double cos_incident = Vector3d.Dot(ViewDirection, SurfaceNormal);
 				double n_relative;
 				if (Direction == 1)
-					n_relative = FirstIntersectedObject.Material.RefractionIndex/ray.IndexOfRefraction;
+					n_relative = FirstIntersectedObject.Material.RefractionIndex/1;
 				else
-					n_relative = ray.IndexOfRefraction/FirstIntersectedObject.Material.RefractionIndex;
+					n_relative = 1/FirstIntersectedObject.Material.RefractionIndex;
 				double CritAngleCheck = 1 - n_relative * n_relative * (1 - cos_incident * cos_incident);
 				if (CritAngleCheck >= 0)
 				{
 					double cos_refraction = Math.Sqrt(CritAngleCheck);
 					Vector3d RefractedRayDirection = (n_relative * cos_incident - cos_refraction) * SurfaceNormal - n_relative * ViewDirection;
-					Ray RefractedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), RefractedRayDirection,FirstIntersectedObject.Material.RefractionIndex);
+					Ray RefractedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), RefractedRayDirection);
 					pixel_color +=  refraction_coeff* RecursiveRayTrace(RefractedRay, depth);
 				}
 			}
@@ -289,6 +267,7 @@ public class SceneEntity
 	protected Vector3d x;
     protected Vector3d y;
     protected Vector3d z;
+	protected Scene? Scene;
 
     public Vector3d Position
     {
@@ -322,11 +301,8 @@ public class SceneEntity
 			case "world":
                 homogeneous_pos = transform*homogeneous_pos;
                 break;
-			//TODO: Add case for when the object is rotated around its own system. 
-
         }
     }
-
 }
 
 /// <summary>
@@ -355,36 +331,36 @@ public class ProjectionPlane
 /// </summary>
 public class Ray
 {
-    public Vector3d Origin;
-    public Vector3d Direction;
-	public double IndexOfRefraction;
+	public Vector3d Origin;
+	public Vector3d Direction;
+	public Scene RayScene;
 
-    /// <summary>
-    /// Used when the intersection function is called. It stores the intersections of each 
-    /// encountered object, and based on this it creates the image. After the image is generated, 
-    /// it contains only those objects as keys, that were intersected, so there are no null values.
-    /// </summary>
-    public Dictionary<SceneObject, float[]> Intersections=new Dictionary<SceneObject, float[]>();
+	/// <summary>
+	/// Used when the intersection function is called. It stores the intersections of each 
+	/// encountered object, and based on this it creates the image. After the image is generated, 
+	/// it contains only those objects as keys, that were intersected, so there are no null values.
+	/// </summary>
+	public Dictionary<Shape, float[]> Intersections = new Dictionary<Shape, float[]>();
 
 	/// <summary>
 	/// Returns the first object that the ray encountered, based on the t value intervals in the Intersections property.
 	/// </summary>
-	public SceneObject? FirstIntersectedObject { 
-		get 
+	public Shape? FirstIntersectedObject {
+		get
 		{
-			Dictionary<SceneObject,float> first_intersection= Intersections.ToDictionary(k=>k.Key,v=>v.Value.Min());
-			SceneObject? fi =first_intersection.Values.Count()==0 ? null: first_intersection.MinBy(kvp => kvp.Value).Key;
-			return fi; 
-		} 
+			Dictionary<Shape, float> first_intersection = Intersections.ToDictionary(k => k.Key, v => v.Value.Min());
+			Shape? fi = first_intersection.Values.Count() == 0 ? null : first_intersection.MinBy(kvp => kvp.Value).Key;
+			return fi;
+		}
 	}
-	
+
 	/// <summary>
 	/// Returns the parameter t, which represents the ray intersection.
 	/// </summary>
-	public float FirstIntersection { 
-		get 
+	public float FirstIntersection {
+		get
 		{
-			return FirstIntersectedObject==null?float.PositiveInfinity:Intersections[FirstIntersectedObject].Min(); 
+			return FirstIntersectedObject == null ? float.PositiveInfinity : Intersections[FirstIntersectedObject].Min();
 		}
 	}
 
@@ -398,11 +374,23 @@ public class Ray
 	/// </summary>
 	/// <param name="origin"></param>
 	/// <param name="direction"></param>
-	public Ray(Vector3d origin, Vector3d direction,double IOR=1)
+	public Ray(Vector3d origin, Vector3d direction)
 	{
 		Origin = origin;
-		Direction = direction==Vector3d.Zero?direction:Vector3d.Normalize(direction);
-		IndexOfRefraction = IOR;
+		Direction = direction == Vector3d.Zero ? direction : Vector3d.Normalize(direction); 
+    }
+
+	/// <summary>
+	/// Adds a scene to the ray, and calculates the intersections. It is important that the 
+	/// ray origin and direction should be in the world coordinate system.
+	/// </summary>
+	/// <param name="scene"></param>
+	/// <param name="origin"></param>
+	/// <param name="direction"></param>
+	public Ray(Vector3d origin, Vector3d direction, Scene scene) :this(origin,direction)
+	{
+		RayScene = scene;
+		GetIntersections(scene);
 	}
 
 	/// <summary>
@@ -411,15 +399,32 @@ public class Ray
 	/// </summary>
 	/// <param name="t"></param>
 	/// <returns></returns>
-    public Vector3d GetRayPoint(float t)
-    {
-		return Origin+t*Direction;
+	public Vector3d GetRayPoint(float t)
+	{
+		return Origin + t * Direction;
+	}	
+
+	/// <summary>
+	/// Transforms the ray origin and direction to world coordinate system, and fills up the intersections
+	/// dictionary.
+	/// </summary>
+	/// <param name="scene">The scene containing the shapes</param>
+	public void GetIntersections(Scene scene)
+	{
+        for (int i = 0; i <scene.Objects.Count(); i++)
+        {
+            //Calculate ray intersections
+            float[]? intersections = scene.Objects[i].Intersection(this);
+            if (intersections != null)
+            {
+                Intersections.Add(scene.Objects[i], intersections);
+            }
+        }
     }
 }
 
 public class Camera : SceneEntity
 {
-	private Scene? Scene;
 
 	//TODO: Angle getters.
 	public float ElevationAngle{ get; set; }
@@ -556,7 +561,7 @@ public class Camera : SceneEntity
     /// the camera's coordinate system.
     /// </summary>
     /// <param name="obj"></param>
-    public Vector3d LookAt(SceneObject obj)
+    public Vector3d LookAt(Shape obj)
 	{
 		return LookAt(obj.Position);
 	}
@@ -569,7 +574,9 @@ public class Camera : SceneEntity
 	{
 		return CameraSystem * sceneEntity.Position;
 	}
-	public virtual List<Ray> CastRay(ProjectionPlane plane, int px_x, int px_y,int ray_per_pixel=1)
+
+
+	public virtual List<Ray> CastRay(ProjectionPlane plane, int px_x, int px_y,int ray_per_pixel=1,bool CameraSystem=false)
 	{
 		List<Ray> rays = new List<Ray>();
         rays.Add(new Ray(new Vector3d(), new Vector3d()));
@@ -590,7 +597,7 @@ public class PerspectiveCamera:Camera
 	}
 
 	/// <summary>
-	/// Casts the given number of rays with through the plane through the given pixel. Inside the pixel the location the ray is going through is 
+	/// Casts the given number of rays through the given pixel. Inside the pixel the location the ray is going through is 
 	/// chosen with a uniform distribution.
 	/// </summary>
 	/// <param name="plane">The plane to project to </param>
@@ -598,8 +605,9 @@ public class PerspectiveCamera:Camera
 	/// <param name="px_y"></param>
 	/// <param name="ray_per_pixel">The number of rays to be casted through a pixel. The ray's direction is chosen randomly within the square with a 
 	/// uniform distribution.</param>
-	/// <returns>The ray's direction vector in the camera coordinate system.</returns>
-	public override List<Ray> CastRay(ProjectionPlane plane, int px_x, int px_y,int ray_per_pixel=1)
+	/// <returns>The ray's direction vector in the chosen coordinate system. If it returns it in the
+	/// world coordinate system, it also calculates the intersections.</returns>
+	public override List<Ray> CastRay(ProjectionPlane plane, int px_x, int px_y,int ray_per_pixel=1,bool CameraSystem=false)
 	{
 		List<Ray> rays = new List<Ray>();
 		Random rnd = new Random();
@@ -614,35 +622,31 @@ public class PerspectiveCamera:Camera
             //The intersected point in the plane in the camera system
             double z = (plane.W / 2f) / Math.Tan(FOV / 360f * Math.PI);
             Vector3d intersection_point = new Vector3d(x, -y, -z); //y is negative for proper image coordinates
-			rays.Add(new Ray(Vector3d.Zero,intersection_point));
+			Ray casted_ray = new Ray(Vector3d.Zero, intersection_point);
+			if(!CameraSystem)
+			{
+				casted_ray.RayScene = Scene;
+                casted_ray.Origin = this.Position;
+                casted_ray.Direction = Vector3d.Normalize((Matrix4d.Invert(this.CameraTransformMatrix) * new Vector4d(casted_ray.Direction, 1)).Xyz - casted_ray.Origin);
+				casted_ray.GetIntersections(Scene);
+            }
+			rays.Add(casted_ray);
         }
         return rays;
 	}
 }
 
-public interface SurfaceProperties
-{
-    public Material Material { get; set; }
-    public float[]? Intersection(Ray ray);
-	/// <summary>
-	///	If the ray input intersects the object, it returns the surface normal of the intersection point. Else it returns a zero vector. The last element 
-	///	of the output vector indicates, whether the ray came from outside, or inside the object. It is 0, if it came from outside, and 1 otherwise.
-	/// </summary>
-	/// <param name="ray"></param>
-	/// <returns></returns>
-	public Vector4d SurfaceNormal(Ray ray);
-}
 
 /// <summary>
 /// Represents an SceneObject in the scene. Also defines operations between the scene objects. 
 /// </summary>
-public class SceneObject:SceneEntity,SurfaceProperties
+public class Shape:SceneEntity
 {
 	public Vector3d Color { get; set; }
 	public Material Material { get; set; }
 	public double Scale { get; set; }
 	
-	public SceneObject()
+	public Shape()
 	{
 		Color = new Vector3d(255, 0, 0);
 		Material = new Phong1();
@@ -653,7 +657,7 @@ public class SceneObject:SceneEntity,SurfaceProperties
 		z = new Vector3d(0, 0, 1);
 	}
 
-    public SceneObject(Vector3d color,Material material)
+    public Shape(Vector3d color,Material material)
 	{
 		Color= color;
 		Material = material;
@@ -669,7 +673,7 @@ public class SceneObject:SceneEntity,SurfaceProperties
 	}
 }
 
-public class Sphere:SceneObject
+public class Sphere:Shape
 {
 	public double Radius { get { return Scale; } set { Scale = value; } }
 	public Vector3d Center { get { return Position; } }
@@ -746,7 +750,7 @@ public class Sphere:SceneObject
 	}
 }
 
-public class Plane : SceneObject, SurfaceProperties
+public class Plane : Shape
 {
 
 	public Vector3d Normal;
@@ -804,19 +808,14 @@ public class Plane : SceneObject, SurfaceProperties
 /// <summary>
 /// In case something lighting sepcific comes to my mind. Light 
 /// </summary>
-public interface LightSource
+public class LightSource:SceneEntity
 {
-	public Ray CastRay(Vector3d point);
-	public Vector3d DiffuseLighting { get; set; }
-	public Vector3d SpecularLighting { get; set; }
+	public virtual Vector3d DiffuseLighting { get; set; }
+	public virtual Vector3d SpecularLighting { get; set; }
 }
 
 public class PointLight:LightSource
 {
-	public Vector3d Position;
-    public Vector3d DiffuseLighting { get; set; }
-    public Vector3d SpecularLighting { get; set; }
-
 	public PointLight()
 	{
 		Position = new Vector3d(0, 0, 0);
@@ -830,23 +829,11 @@ public class PointLight:LightSource
 		DiffuseLighting = diffuse_lighting;
 		SpecularLighting = specular_lighting;
 	}
-
-	/// <summary>
-	/// Casts a ray towards the desired point from the light source.
-	/// </summary>
-	/// <param name="point"></param>
-	/// <returns></returns>
-	public Ray CastRay(Vector3d point)
-	{
-		return new Ray(Position,point-Position);
-    }
 }
 
-public class DirectionalLight:LightSource	
+public class DirectionalLight:LightSource
 {
     public Vector3d Direction;
-    public Vector3d DiffuseLighting { get; set; }
-    public Vector3d SpecularLighting { get; set; }
     public DirectionalLight()
     {
         Direction = new Vector3d(1, 1, 1);
@@ -854,8 +841,4 @@ public class DirectionalLight:LightSource
         SpecularLighting = new Vector3d(1, 1, 1);
     }
 
-    public Ray CastRay(Vector3d point)
-	{
-		return new Ray(new Vector3d(0, 0, 0), new Vector3d(0, 0, 0));
-	}
 }

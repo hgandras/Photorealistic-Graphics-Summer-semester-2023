@@ -4,7 +4,7 @@ namespace rt004;
 
 public abstract class ReflectanceModel
 {
-    public abstract Vector3d GetReflectedColor(Ray ray, Vector3d ambient_lighting, List<LightSource> light,List<SceneObject> objects=null);
+    public abstract Vector3d GetReflectedColor(Ray ray, Vector3d ambient_lighting, List<LightSource> light,bool shadows = true);
 }
 
 public class Phong:ReflectanceModel
@@ -26,8 +26,9 @@ public class Phong:ReflectanceModel
     /// <param name="ray">The ray shot through the pixel to be evaluated</param>
     /// <param name="ambient_lighting">The color value of the ambient lighting</param>
     /// <param name="light">The light sources in the scene.</param>
+    /// <param name="objects">The objects</param>
     /// <returns></returns>
-    public override Vector3d GetReflectedColor(Ray ray, Vector3d ambient_lighting,List<LightSource> light_sources,List<SceneObject> objects=null)
+    public override Vector3d GetReflectedColor(Ray ray, Vector3d ambient_lighting,List<LightSource> light_sources,bool shadows=true)
     {
         if (ray.FirstIntersectedObject==null || light_sources.Count()==0)//If the object is not intersected or there are                                                                
             return ambient_lighting;                                     //no light sources in the scene, the pixel value
@@ -42,19 +43,12 @@ public class Phong:ReflectanceModel
 
         foreach (LightSource light in light_sources)
         {
-            Ray light_ray = light.CastRay(intersection_point);
-            if (objects!=null)
+            Ray light_ray = new Ray(light.Position,intersection_point-light.Position,ray.RayScene);
+            if (shadows)
             {
                 //Since the ray contains the direction normalized, we only have to check if the ray intersects 
                 //any objects between the light source, and the object.
-                Ray shadowRay = new Ray(intersection_point, -light_ray.Direction);
-
-                foreach (SceneObject obj in objects)
-                {
-                    float[]? intersections = obj.Intersection(shadowRay);
-                    if (intersections!=null)
-                        shadowRay.Intersections.Add(obj,intersections);
-                }
+                Ray shadowRay = new Ray(intersection_point-Globals.ROUNDING_ERR*light_ray.Direction, -light_ray.Direction,ray.RayScene);
                 if (shadowRay.FirstIntersectedObject != null)
                     continue; 
             }
@@ -86,11 +80,21 @@ public interface Material
     public ReflectanceModel getReflectance { get; }
 }
 
+public class Air : Material
+{
+    public double RefractionIndex { get { return 1; } }
+
+    public bool Glossy { get { return false; } }
+
+    public bool Transparent { get { return true; } }
+
+    public ReflectanceModel getReflectance { get { return new Phong(0.0f, 0.0f, 0.0f, 0.0f); } }
+}
 public class Phong1 : Material
 {
     public double RefractionIndex { get { return 2; } }
-    public bool Glossy{get{ return false; }}
-    public bool Transparent { get { return true; } }
+    public bool Glossy{get{ return true; }}
+    public bool Transparent { get { return false; } }
     public ReflectanceModel getReflectance { get { return new Phong(0.1f, 0.8f, 0.2f, 10); } }
 }
 public class Phong2 : Material
@@ -119,9 +123,9 @@ public class Phong4:Material
     public double RefractionIndex { get { return 4; } }
     public ReflectanceModel getReflectance { get { return new Phong(0.2f, 0.2f, 0.8f, 400); } }
 
-    public bool Glossy { get { return true; } }
+    public bool Glossy { get { return false; } }
 
-    public bool Transparent { get { return false; } }
+    public bool Transparent { get { return true; } }
 }
 
 public class Phong5:Material

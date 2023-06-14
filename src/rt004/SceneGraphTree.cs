@@ -64,12 +64,12 @@ public class SceneGraph
         public List<Node>? Children { get; set; }
         public string? Obj { get; set; }
         public string? Transformation { get; set; }
-        public SceneObject? Object { 
+        public Shape? Object { 
             get {
-                SceneObject? priv_obj=null;
+                Shape? priv_obj=null;
                 if (Obj != null)
                 {
-                    priv_obj = Activator.CreateInstance(Type.GetType(Globals.ASSEMBLY_NAME + Obj)) as SceneObject;
+                    priv_obj = Activator.CreateInstance(Type.GetType(Globals.ASSEMBLY_NAME + Obj)) as Shape;
                 }
                 return priv_obj;
             } 
@@ -126,9 +126,9 @@ public class SceneGraph
         return; 
     }
 
-    private List<SceneObject> traverse(Node node,Matrix4d transform,Attribs? attribs)
+    private List<Shape> traverse(Node node,Matrix4d transform,Attribs? attribs)
     {
-        List<SceneObject> sceneObjects = new List<SceneObject>();
+        List<Shape> sceneObjects = new List<Shape>();
         Matrix4d current_transform =node.Transform*transform;
         Attribs? attributes = node.Attributes != null ? node.Attributes : attribs;
         
@@ -141,7 +141,7 @@ public class SceneGraph
         }
         else if(node.Object!=null)
         {
-            SceneObject scene_object = node.Object;
+            Shape scene_object = node.Object;
             scene_object.Transform(current_transform);
             if(scene_object is Plane)
             {
@@ -167,9 +167,9 @@ public class SceneGraph
     /// <summary>
     /// Traverses the tree, and returns a list of the objects stored in it.
     /// </summary>
-    public List<SceneObject> RetrieveObjects()
+    public List<Shape> RetrieveObjects()
     {
-        List<SceneObject> objects = traverse(Root,Root.Transform,Root.Attributes);
+        List<Shape> objects = traverse(Root,Root.Transform,Root.Attributes);
         return objects;
     }
 }

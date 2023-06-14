@@ -64,7 +64,6 @@ public class SceneConfig
     public float[] WorldUpDirection { get; set; }
     public bool Shadows { get; set; }
     public int MaxDepth { get; set; }
-
     public float[] BackgroundColor { get; set; }
     public string SceneGraph { get; set; }
 
