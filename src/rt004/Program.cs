@@ -7,7 +7,7 @@ namespace rt004;
 
 public class Globals
 {
-    public const float ROUNDING_ERR = 1e-5f;
+    public const double ROUNDING_ERR = 1e-5f;
     public const string ASSEMBLY_NAME = "rt004.";
 }
 
@@ -97,7 +97,7 @@ internal class Program
         FloatImage fi = new FloatImage(wid, hei, 3);
 
         //Linearly interpolates between 2 based on the pixel height in a circle.
-        float radius = (float)Math.Min(wid,hei)/2f;
+        double radius = (double)Math.Min(wid,hei)/2f;
                       
         for (int h = 0; h < hei; h++)
         {
@@ -108,7 +108,7 @@ internal class Program
 
                 if (Math.Pow((centered_x), 2) + Math.Pow((centered_y), 2) < Math.Pow(radius, 2))
                 {
-                    Color color_rgb = ColorTools.lerpRGB(color1, color2, 1f/hei*(float)h);
+                    Color color_rgb = ColorTools.lerpRGB(color1, color2, 1f/hei*h);
                     fi.PutPixel(w, h, new float[3] { color_rgb.R, color_rgb.G, color_rgb.B });
                 }
                 else

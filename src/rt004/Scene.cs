@@ -172,7 +172,7 @@ public class Scene
 	/// <summary>
 	/// For each pixel in the plane get generate the ray direction vectors. After that, for all rays, calculate 
 	/// the intersection of all objects in the scene, and based on that the reflection, and the pixel color value
-	/// in float.
+	/// in double.
 	/// </summary>
 	/// <param name="width"></param>
 	/// <param name="height"></param>
@@ -190,12 +190,10 @@ public class Scene
 				//Transform ray to world coordinate system
 				foreach (Ray ray in rays)
 				{
-					//TODO:Add a check here, whether the ray is inside an object, to decide the 
-					//refraction index.
 					int Depth = 0;
 					final_color += RecursiveRayTrace(ray, Depth);	
 				}
-                image.PutPixel(w, h, ColorTools.V3dToArr(final_color/Plane.RayPerPixel));
+                image.PutPixel(w, h, Array.ConvertAll(ColorTools.V3dToArr(final_color/Plane.RayPerPixel),item =>(float)item));
             }
         }
 		return image;
@@ -208,48 +206,53 @@ public class Scene
         Shape? FirstIntersectedObject = ray.FirstIntersectedObject;
 		if (FirstIntersectedObject == null)
 			return BackgroundColor;
-		else
-		{ 
-            //Calculate reflected color values
-			pixel_color += FirstIntersectedObject.Material.getReflectance.GetReflectedColor(ray, AmbientLighting, LightSources,DisplayShadows);
+		
+        //Calculate reflected color values
+		pixel_color += FirstIntersectedObject.Material.getReflectance.GetReflectedColor(ray, AmbientLighting, LightSources,DisplayShadows);
 
-			if (depth++ >= maxDepth )
-				return pixel_color;
+		if (depth++ >= maxDepth )
+			return pixel_color;
 
-            Vector4d Norm = FirstIntersectedObject.SurfaceNormal(ray);
-			Vector3d SurfaceNormal = Norm.Xyz;
-            //Ray direction is taken with negative, since it is casted from the camera, and not from the surface
-            Vector3d ViewDirection = -ray.Direction;
-			//Appriximate fresnel term for reflection
-            double reflection_coeff = ShadeTools.Fresnel(ViewDirection, SurfaceNormal, 1, FirstIntersectedObject.Material.RefractionIndex);
-			double refraction_coeff = 1 - reflection_coeff;
-            if (FirstIntersectedObject.Material.Glossy)
+        Vector3d SurfaceNormal = FirstIntersectedObject.SurfaceNormal(ray);
+		bool IsOutside = ShadeTools.CheckIncidentLocation(SurfaceNormal, ray.Direction);
+		if (!IsOutside)
+			SurfaceNormal = -SurfaceNormal;
+        //Ray direction is taken with negative, since it is casted from the camera, and not from the surface
+        Vector3d ViewDirection = -ray.Direction;
+
+		//Refraction indices of the materials on the boundary
+		double n1=1;
+        if (ray.RefractionIndex!=double.PositiveInfinity)
+            n1 = ray.RefractionIndex;
+		double n2 = FirstIntersectedObject.Material.RefractionIndex;
+		if (!IsOutside) //Swap the two values, if the ray is coming out from the object.
+			(n1,n2)= (n2,n1);
+
+		//Approximate fresnel term for reflection
+        double reflection_coeff = ShadeTools.Fresnel(ViewDirection, SurfaceNormal, n1, n2);
+		double refraction_coeff = 1 - reflection_coeff;
+        if (FirstIntersectedObject.Material.Glossy)
+		{
+			Vector3d ReflectedRayDirection = 2 * Vector3d.Dot(ViewDirection,SurfaceNormal) * SurfaceNormal + ray.Direction;
+			ReflectedRayDirection = Vector3d.Normalize(ReflectedRayDirection);
+			Ray ReflectedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), ReflectedRayDirection,this);
+			pixel_color += reflection_coeff* RecursiveRayTrace(ReflectedRay, depth);
+		}
+		if(FirstIntersectedObject.Material.Transparent)
+		{
+            //TODO: Solve material boundaries. Right now it assumes that solids are only in contact with air, and no other solids.
+            double cos_incident = Vector3d.Dot(ViewDirection, SurfaceNormal);
+			double n_relative = n1/n2;
+            double CritAngleCheck = 1 - n_relative * n_relative * (1 - cos_incident * cos_incident);
+			if (CritAngleCheck >= 0)
 			{
-				Vector3d ReflectedRayDirection = 2 * Vector3d.Dot(ViewDirection,SurfaceNormal) * SurfaceNormal + ray.Direction;
-				ReflectedRayDirection = Vector3d.Normalize(ReflectedRayDirection);
-				Ray ReflectedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), ReflectedRayDirection);
-				pixel_color += reflection_coeff* RecursiveRayTrace(ReflectedRay, depth);
-			}
-			if(FirstIntersectedObject.Material.Transparent)
-			{
-                //TODO: Solve material boundaries. Right now it assumes that solids are only in contact with air, and no other solids.
-                double Direction = Norm.W;
-                double cos_incident = Vector3d.Dot(ViewDirection, SurfaceNormal);
-				double n_relative;
-				if (Direction == 1)
-					n_relative = FirstIntersectedObject.Material.RefractionIndex/1;
-				else
-					n_relative = 1/FirstIntersectedObject.Material.RefractionIndex;
-				double CritAngleCheck = 1 - n_relative * n_relative * (1 - cos_incident * cos_incident);
-				if (CritAngleCheck >= 0)
-				{
-					double cos_refraction = Math.Sqrt(CritAngleCheck);
-					Vector3d RefractedRayDirection = (n_relative * cos_incident - cos_refraction) * SurfaceNormal - n_relative * ViewDirection;
-					Ray RefractedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), RefractedRayDirection);
-					pixel_color +=  refraction_coeff* RecursiveRayTrace(RefractedRay, depth);
-				}
+				double cos_refraction = Math.Sqrt(CritAngleCheck);
+				Vector3d RefractedRayDirection = (n_relative * cos_incident - cos_refraction) * SurfaceNormal - n_relative * ViewDirection;
+				Ray RefractedRay = new Ray(ray.GetRayPoint(ray.FirstIntersection), RefractedRayDirection,this);
+				pixel_color +=  refraction_coeff* RecursiveRayTrace(RefractedRay, depth);
 			}
 		}
+		
 		return pixel_color;
 	}
 }
@@ -260,7 +263,7 @@ public class Scene
 public class SceneEntity
 {
     protected Vector4d homogeneous_pos;
-	protected float[] pos;
+	protected double[] pos;
 	public Vector3d X { get { return x; } }
 	public Vector3d Y { get { return y; } }
 	public Vector3d Z { get { return z; } }
@@ -274,9 +277,9 @@ public class SceneEntity
         get {  return homogeneous_pos.Xyz; }
         set
         {
-            pos[0] = (float)value.X;
-            pos[1] = (float)value.Y;
-            pos[2] = (float)value.Z;
+            pos[0] = (double)value.X;
+            pos[1] = (double)value.Y;
+            pos[2] = (double)value.Z;
 
             homogeneous_pos = new Vector4d(pos[0], pos[1], pos[2], 1);
         }
@@ -284,7 +287,7 @@ public class SceneEntity
 
 	public SceneEntity()
 	{
-		pos=new float[3];
+		pos=new double[3];
 		x = new Vector3d(1, 0, 0);
 		y = new Vector3d(0, 1, 0);
 		z = new Vector3d(0, 0, 1);
@@ -336,11 +339,10 @@ public class Ray
 	public Scene RayScene;
 
 	/// <summary>
-	/// Used when the intersection function is called. It stores the intersections of each 
-	/// encountered object, and based on this it creates the image. After the image is generated, 
-	/// it contains only those objects as keys, that were intersected, so there are no null values.
+	/// Used when the intersection function is called. It stores the intersection parameter t as keys,
+	/// and the objects as values. 
 	/// </summary>
-	public Dictionary<Shape, float[]> Intersections = new Dictionary<Shape, float[]>();
+	public SortedDictionary<double, Shape> Intersections = new SortedDictionary<double, Shape>();
 
 	/// <summary>
 	/// Returns the first object that the ray encountered, based on the t value intervals in the Intersections property.
@@ -348,19 +350,97 @@ public class Ray
 	public Shape? FirstIntersectedObject {
 		get
 		{
-			Dictionary<Shape, float> first_intersection = Intersections.ToDictionary(k => k.Key, v => v.Value.Min());
-			Shape? fi = first_intersection.Values.Count() == 0 ? null : first_intersection.MinBy(kvp => kvp.Value).Key;
+			Shape? fi = Intersections.Values.Count() == 0 ? null : Intersections[Intersections.Keys.Min()];
 			return fi;
 		}
 	}
 
 	/// <summary>
-	/// Returns the parameter t, which represents the ray intersection.
+	/// Number of intersections per intersected shapes
 	/// </summary>
-	public float FirstIntersection {
+	public Dictionary<Shape, int> IntersectionsPerShape
+	{
 		get
 		{
-			return FirstIntersectedObject == null ? float.PositiveInfinity : Intersections[FirstIntersectedObject].Min();
+			Dictionary<Shape, int> intersection_counts = new Dictionary<Shape, int>();
+			foreach(Shape shape in Intersections.Values)
+			{
+				if (intersection_counts.ContainsKey(shape))
+				{
+					intersection_counts[shape]++;
+				}
+				else
+					intersection_counts[shape] = 1;
+			}
+			return intersection_counts;
+		}	
+	}
+
+	//These two attributes can be used to determine which material the ray is in right now.
+
+	/// <summary>
+	/// Shapes which don't contain the ray's origin.
+	/// </summary>
+	public List<Shape> OriginNotContained
+	{
+		get
+		{
+			List<Shape> shapes = new List<Shape>();
+			foreach(Shape shape in IntersectionsPerShape.Keys)
+			{
+				if (IntersectionsPerShape[shape] % 2 == 0)
+					shapes.Add(shape);
+			}
+			return shapes;
+		}
+	}
+
+	/// <summary>
+	/// Shapes which contain the ray's origin.
+	/// </summary>
+	public List<Shape> OriginContained
+	{
+		get
+		{
+            List<Shape> shapes = new List<Shape>();
+            foreach (Shape shape in IntersectionsPerShape.Keys)
+            {
+
+				if (IntersectionsPerShape[shape] % 2 == 1 && shape.GetType()!=typeof(Plane))
+				{
+					shapes.Add(shape);
+				}
+            }
+            return shapes;
+        }
+	}
+
+	/// <summary>
+	/// Returns the parameter t, which represents the ray intersection.
+	/// </summary>
+	public double FirstIntersection {
+		get
+		{
+			return FirstIntersectedObject == null ? double.PositiveInfinity : Intersections.Keys.Min();
+		}
+	}
+
+	/// <summary>
+	/// Returns the refraction index of the medium that the ray is going to be in after refraction.
+	/// </summary>
+	public double RefractionIndex
+	{
+		get
+		{
+			List<Shape> origin_contained = OriginContained;
+			foreach(Shape shape in Intersections.Values)
+			{
+				if(origin_contained.Contains(shape) && shape!=FirstIntersectedObject)
+				{
+					return shape.Material.RefractionIndex;
+				}
+			}
+			return double.PositiveInfinity;
 		}
 	}
 
@@ -399,7 +479,7 @@ public class Ray
 	/// </summary>
 	/// <param name="t"></param>
 	/// <returns></returns>
-	public Vector3d GetRayPoint(float t)
+	public Vector3d GetRayPoint(double t)
 	{
 		return Origin + t * Direction;
 	}	
@@ -411,13 +491,20 @@ public class Ray
 	/// <param name="scene">The scene containing the shapes</param>
 	public void GetIntersections(Scene scene)
 	{
-        for (int i = 0; i <scene.Objects.Count(); i++)
+        foreach (Shape shape in scene.Objects)
         {
             //Calculate ray intersections
-            float[]? intersections = scene.Objects[i].Intersection(this);
+            double[]? intersections = shape.Intersection(this);
             if (intersections != null)
             {
-                Intersections.Add(scene.Objects[i], intersections);
+				foreach(double t in intersections)
+				{
+					double param = t;
+					/*if (Intersections.ContainsKey(param))
+						param += Globals.ROUNDING_ERR;*/
+					Intersections.Add(param, shape);
+                }
+                
             }
         }
     }
@@ -427,8 +514,8 @@ public class Camera : SceneEntity
 {
 
 	//TODO: Angle getters.
-	public float ElevationAngle{ get; set; }
-	public float AzimuthAngle { get; set; }
+	public double ElevationAngle{ get; set; }
+	public double AzimuthAngle { get; set; }
 
 	/// <summary>
 	/// The point the camera's -Z axis is going through.
@@ -437,12 +524,12 @@ public class Camera : SceneEntity
 		get { return new Vector3d(t[0], t[1], t[2]); }
 		set
 		{
-			t[0] = (float)value.X;
-			t[1] = (float)value.Y;
-			t[2] = (float)value.Z;
+			t[0] = (double)value.X;
+			t[1] = (double)value.Y;
+			t[2] = (double)value.Z;
 		}
 	}
-	private float[] t = new float[3];
+	private double[] t = new double[3];
 
 	public Camera(CameraConfig config)
 	{
@@ -575,7 +662,6 @@ public class Camera : SceneEntity
 		return CameraSystem * sceneEntity.Position;
 	}
 
-
 	public virtual List<Ray> CastRay(ProjectionPlane plane, int px_x, int px_y,int ray_per_pixel=1,bool CameraSystem=false)
 	{
 		List<Ray> rays = new List<Ray>();
@@ -586,7 +672,7 @@ public class Camera : SceneEntity
 
 public class PerspectiveCamera:Camera
 {
-    public float FOV;
+    public double FOV;
     public PerspectiveCamera(CameraConfig config) :base(config)
 	{
 		FOV = config.FOV;
@@ -662,14 +748,14 @@ public class Shape:SceneEntity
 		Color= color;
 		Material = material;
 	}
-	public virtual float[]? Intersection(Ray ray)
+	public virtual double[]? Intersection(Ray ray)
 	{
-		return new float[] {float.PositiveInfinity};
+		return new double[] {double.PositiveInfinity};
 	}
 
-	public virtual Vector4d SurfaceNormal(Ray point)
+	public virtual Vector3d SurfaceNormal(Ray point)
 	{
-		return Vector4d.Zero;
+		return Vector3d.Zero;
 	}
 }
 
@@ -688,7 +774,7 @@ public class Sphere:Shape
 	/// <param name="color"></param>
 	/// <param name="Pos"></param>
 	/// <param name="R"></param>
-	public Sphere(Vector3d color, Vector3d Pos,Material material,float R) : base(color,material)
+	public Sphere(Vector3d color, Vector3d Pos,Material material,double R) : base(color,material)
 	{
 		Scale = R;
 		Position = Pos;
@@ -702,7 +788,7 @@ public class Sphere:Shape
 	/// <param name="ray"></param>
 	/// <param name="pos">The object's position in the camera's system. </param>
 	/// <returns></returns>
-    public override float[]? Intersection(Ray ray)
+    public override double[]? Intersection(Ray ray)
 	{
 		//Calculate coefficients
 		double a = Vector3d.Dot(ray.Direction,ray.Direction);
@@ -711,12 +797,12 @@ public class Sphere:Shape
 
 		double discriminant = b * b - 4 * a * c;
 
-		List<float> intersectionPoints = new List<float>();
+		List<double> intersectionPoints = new List<double>();
 
 		if (discriminant > 0)
 		{
-			float t1 = (float)((-b - Math.Sqrt(discriminant)) / 2 * a);
-			float t2 = (float)((-b + Math.Sqrt(discriminant)) / 2 * a);
+			double t1 = (double)((-b - Math.Sqrt(discriminant)) / 2 * a);
+			double t2 = (double)((-b + Math.Sqrt(discriminant)) / 2 * a);
 			if (t1 >Globals.ROUNDING_ERR)
 				intersectionPoints.Add(t1);
 			if (t2 > Globals.ROUNDING_ERR)
@@ -724,7 +810,7 @@ public class Sphere:Shape
 		}
 		else if (discriminant == 0)
 		{
-			float t = (float)(-b / 2 * a);
+			double t = (double)(-b / 2 * a);
 			if (t > Globals.ROUNDING_ERR)
 				intersectionPoints.Add(t);
 		}
@@ -733,20 +819,18 @@ public class Sphere:Shape
         return null;
     }
 
-    public override Vector4d SurfaceNormal(Ray ray)
+    public override Vector3d SurfaceNormal(Ray ray)
 	{
-		if(!ray.Intersections.ContainsKey(this))
+		if(!ray.Intersections.ContainsValue(this))
 		{
-			float[]? intersections = Intersection(ray);
+			double[]? intersections = Intersection(ray);
 			if(intersections!=null)
-				ray.Intersections.Add(this, intersections);
+			foreach(double t in intersections)
+				ray.Intersections.Add(t,this);
 		}
         Vector3d first_intersection = ray.GetRayPoint(ray.FirstIntersection);
         Vector3d Normal = Vector3d.Normalize(first_intersection - Center);
-        double angle = Vector3d.CalculateAngle(Normal, ray.Direction);
-		if (angle > Math.PI / 2.0 || angle < -Math.PI / 2.0)
-			return new Vector4d(Normal,0);
-		return new Vector4d(-Normal,1);
+		return Normal;
 	}
 }
 
@@ -784,24 +868,21 @@ public class Plane : Shape
 	/// </summary>
 	/// <param name="ray"></param>
 	/// <returns>The parameters t of the ray in the intersection points</returns>
-    public override float[]? Intersection(Ray ray)
+    public override double[]? Intersection(Ray ray)
     {
-        float denominator = (float)Vector3d.Dot(ray.Direction, -SurfaceNormal(ray).Xyz);
+        double denominator = (double)Vector3d.Dot(ray.Direction, -SurfaceNormal(ray));
         if (denominator >Globals.ROUNDING_ERR )
         {
-            float numerator = (float)Vector3d.Dot((Position - ray.Origin),-SurfaceNormal(ray).Xyz);
+            double numerator = (double)Vector3d.Dot((Position - ray.Origin),-SurfaceNormal(ray));
 			if(numerator/denominator>Globals.ROUNDING_ERR)
-                return new float[] { numerator / denominator };
+                return new double[] { numerator / denominator };
 		}
         return null;
     }
 
-    public override Vector4d SurfaceNormal(Ray ray)
-	{     
-        double angle = Vector3d.CalculateAngle(Normal, ray.Direction);
-		if (angle > Math.PI / 2.0 || angle<-Math.PI/2.0)
-			return new Vector4d(Normal, 0);
-		return new Vector4d(-Normal, 0);
+    public override Vector3d SurfaceNormal(Ray ray)
+	{
+		return Normal;
 	}
 }
 

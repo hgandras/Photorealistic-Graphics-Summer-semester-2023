@@ -9,9 +9,9 @@ public abstract class ReflectanceModel
 
 public class Phong:ReflectanceModel
 {
-    public float k_s,k_d,k_a,alpha;
+    public double k_s,k_d,k_a,alpha;
 
-    public Phong(float k_a, float k_d, float k_s, float alpha)
+    public Phong(double k_a, double k_d, double k_s, double alpha)
     {
         this.k_s = k_s;
         this.k_d = k_d;
@@ -34,7 +34,10 @@ public class Phong:ReflectanceModel
             return ambient_lighting;                                     //no light sources in the scene, the pixel value
                                                                          //is just the ambient lighting
         Vector3d intersection_point = ray.GetRayPoint(ray.FirstIntersection);
-        Vector3d surface_normal = ray.FirstIntersectedObject.SurfaceNormal(ray).Xyz;
+        Vector3d surface_normal = ray.FirstIntersectedObject.SurfaceNormal(ray);
+        bool IsOutside = ShadeTools.CheckIncidentLocation(surface_normal, ray.Direction);
+        if (!IsOutside)
+            surface_normal = -surface_normal;
 
         Vector3d view_direction=-ray.Direction;
 
@@ -48,7 +51,7 @@ public class Phong:ReflectanceModel
             {
                 //Since the ray contains the direction normalized, we only have to check if the ray intersects 
                 //any objects between the light source, and the object.
-                Ray shadowRay = new Ray(intersection_point-Globals.ROUNDING_ERR*light_ray.Direction, -light_ray.Direction,ray.RayScene);
+                Ray shadowRay = new Ray(intersection_point-light_ray.Direction, -light_ray.Direction,ray.RayScene);
                 if (shadowRay.FirstIntersectedObject != null)
                     continue; 
             }
@@ -84,7 +87,7 @@ public class Air : Material
 {
     public double RefractionIndex { get { return 1; } }
 
-    public bool Glossy { get { return false; } }
+    public bool Glossy { get { return true; } }
 
     public bool Transparent { get { return true; } }
 
@@ -92,9 +95,9 @@ public class Air : Material
 }
 public class Phong1 : Material
 {
-    public double RefractionIndex { get { return 2; } }
+    public double RefractionIndex { get { return 1.5; } }
     public bool Glossy{get{ return true; }}
-    public bool Transparent { get { return false; } }
+    public bool Transparent { get { return true; } }
     public ReflectanceModel getReflectance { get { return new Phong(0.1f, 0.8f, 0.2f, 10); } }
 }
 public class Phong2 : Material
@@ -180,5 +183,22 @@ public static class ShadeTools
             return (F_s + F_p) / 2;
         }
         return 1;
+    }
+
+    /// <summary>
+    /// Checks whether the ray is coming inside, or outside of the object, by checking the angle between 
+    /// the normal and the incident ray direction. Since the normal always points outside, this indicates if the normal has
+    /// to be flipped.
+    /// </summary>
+    /// <param name="normal"></param>
+    /// <param name="incident_direction"></param>
+    /// <returns>bool, true if the ray and normal are on the outside surface of the object, false if ray is 
+    /// on the inside surface.</returns>
+    public static bool CheckIncidentLocation(Vector3d normal,Vector3d incident_direction)
+    {
+        double angle = Vector3d.CalculateAngle(normal,incident_direction);
+        if (angle > Math.PI / 2.0 || angle < -Math.PI / 2.0)
+            return true;
+        return false;
     }
 }

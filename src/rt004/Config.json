@@ -5,15 +5,15 @@
     "color2": "0xFFFF00"
   },
   "CameraConfig": {
-    "Position": [ 0, 3,-6],
-    "Target": [ 0.0, 1,0 ],
+    "Position": [ 0, 1,-6],
+    "Target": [ 0, 1,0 ],
     "FOV": 60
   },
   "SceneConfig": {
     "WorldUpDirection": [ 0, 1, 0 ],
     "Shadows": true,
     "BackgroundColor": [ 0.1, 0.2, 0.3 ],
-    "MaxDepth": 4,
+    "MaxDepth": 8,
     "SceneGraph": "SceneGraph.json",
     "AmbientLighting": [ 1, 1, 1 ],
     "Lightings": {

@@ -53,18 +53,18 @@ public class GeneralConfig
 
 public class CameraConfig 
 {
-    public float[] Position { get; set; }
-    public float[] Target { get; set; }
-    public float FOV { get; set; }
+    public double[] Position { get; set; }
+    public double[] Target { get; set; }
+    public double FOV { get; set; }
 }
 
 public class SceneConfig
 {
     public ILogger logger = Logging.CreateLogger<SceneConfig>();
-    public float[] WorldUpDirection { get; set; }
+    public double[] WorldUpDirection { get; set; }
     public bool Shadows { get; set; }
     public int MaxDepth { get; set; }
-    public float[] BackgroundColor { get; set; }
+    public double[] BackgroundColor { get; set; }
     public string SceneGraph { get; set; }
 
     public readonly List<LightSource> LightSources = new List<LightSource>();
@@ -104,17 +104,17 @@ public class SceneConfig
         public class PointLighings
         {
             public int Number { get; set; }
-            public List<float[]> Positions { get; set; }
-            public List<float[]> SpecularIntensities { get; set; }
-            public List<float[]> DiffuseIntensities { get; set; }   
+            public List<double[]> Positions { get; set; }
+            public List<double[]> SpecularIntensities { get; set; }
+            public List<double[]> DiffuseIntensities { get; set; }   
         }
 
         public class DirectionalLightings
         {
             public int Number { get; set; }
-            public List<float[]> Directions { get; set; }
-            public List<float[]> SpecularIntensities { get; set; }
-            public List<float[]> DiffuseIntensities { get; set; }
+            public List<double[]> Directions { get; set; }
+            public List<double[]> SpecularIntensities { get; set; }
+            public List<double[]> DiffuseIntensities { get; set; }
         }
         public PointLighings PointLights { get; set; }
         public DirectionalLightings DirectionalLights { get; set; }
@@ -122,9 +122,9 @@ public class SceneConfig
     }
     public Lights Lightings { get; set; }
     
-    public List<float[]> PointLightPositions { get; set; }
-    public List<float[]> DirectionalLightDirections { get; set; }
-    public float[] AmbientLighting { get; set; }
+    public List<double[]> PointLightPositions { get; set; }
+    public List<double[]> DirectionalLightDirections { get; set; }
+    public double[] AmbientLighting { get; set; }
 
     
 

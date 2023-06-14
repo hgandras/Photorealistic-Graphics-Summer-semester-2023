@@ -39,9 +39,9 @@ public class SceneGraph
 
     public class Attribs
     {
-        public float[] Clr { get; set; }
+        public double[] Clr { get; set; }
         public Vector3d Color { get { return ColorTools.ArrToV3d(Clr); } }
-        public float Scale { get; set; }
+        public double Scale { get; set; }
         public string Mat {get;set;}
         public Material? Material { 
             get
@@ -87,7 +87,7 @@ public class SceneGraph
                         string transform = command.Substring(0, left_bracket);
                         string values = command.Substring(left_bracket);
                         values = values.Trim('(', ')');
-                        float[] values_arr = values.Split(",").Select(float.Parse).ToArray();
+                        double[] values_arr = values.Split(",").Select(double.Parse).ToArray();
                         //Initially just make translations
                         switch (transform)
                         {
