@@ -60,7 +60,7 @@ public static class MathTools
 {
     public static double Deg2Rad(double deg)
     {
-        return deg / 360 * 2 * Math.PI;
+        return (deg / 360.0d) * 2.0d * Math.PI;
     }
 
     public static double Rad2Deg(double rad)

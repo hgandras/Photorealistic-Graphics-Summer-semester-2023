@@ -1,9 +1,9 @@
 ﻿using Microsoft.Extensions.Logging;
 using OpenTK.Mathematics;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace rt004;
-
 
 //TODO: Add attributes to be inherited to the tree. Inner nodes contain transformations, and attributes. They are
 //read in string form, and those are stored in strings. Getters take care of calculating the actual matrices,
@@ -83,23 +83,30 @@ public class SceneGraph
                     string[] commands = Transformation.Split(" ");
                     foreach (string command in commands)
                     {
+                        Console.WriteLine(command);
                         int left_bracket = command.IndexOf('(');
                         string transform = command.Substring(0, left_bracket);
                         string values = command.Substring(left_bracket);
                         values = values.Trim('(', ')');
                         double[] values_arr = values.Split(",").Select(double.Parse).ToArray();
-                        //Initially just make translations
                         switch (transform)
                         {
                             case "translate":
                                 Vector3d values_vec = ColorTools.ArrToV3d(values_arr);
-                                FinalTransform *=Matrix4d.Transpose(Matrix4d.CreateTranslation(values_vec));
+                                FinalTransform =Matrix4d.Transpose(Matrix4d.CreateTranslation(values_vec))*FinalTransform;    
                                 break;
-                            case "rotate":
-                                Matrix4d rotX = Matrix4d.CreateRotationX( MathTools.Deg2Rad(values_arr[0]));
-                                Matrix4d rotY = Matrix4d.CreateRotationY(MathTools.Deg2Rad(values_arr[1]));
-                                Matrix4d rotZ = Matrix4d.CreateRotationZ(MathTools.Deg2Rad(values_arr[2]));
-                                FinalTransform = rotX * rotZ * rotY;
+                            case "rotateX":
+                                Matrix4d rotX = Matrix4d.CreateRotationX(MathTools.Deg2Rad(values_arr[0]));
+                                FinalTransform = rotX*FinalTransform;
+                                break;
+                            case "rotateY":
+                                double rad = MathTools.Deg2Rad(values_arr[0]);
+                                Matrix4d rotY = Matrix4d.CreateRotationY(rad);
+                                FinalTransform = rotY * FinalTransform;
+                                break;
+                            case "rotateZ":
+                                Matrix4d rotZ = Matrix4d.CreateRotationZ(MathTools.Deg2Rad(values_arr[0]));
+                                FinalTransform = rotZ * FinalTransform;
                                 break;
                         }
                     } 
@@ -132,7 +139,7 @@ public class SceneGraph
         Matrix4d current_transform =node.Transform*transform;
         Attribs? attributes = node.Attributes != null ? node.Attributes : attribs;
         
-        if (node.Children != null)
+        if(node.Children != null)
         {
             foreach (Node child in node.Children)
             {
@@ -143,22 +150,12 @@ public class SceneGraph
         {
             Shape scene_object = node.Object;
             scene_object.Transform(current_transform);
-            if(scene_object is Plane)
-            {
-                Console.WriteLine(scene_object);
-            }
-            if (attributes != null)
-            {
-                scene_object.Color = attributes.Color;
-                scene_object.Material = attributes.Material;
-                scene_object.Scale = attributes.Scale;
-            }
-            else
-            {
-                scene_object.Color = Vector3d.One;
-                scene_object.Material = new Phong1();
-                scene_object.Scale = 1;
-            }
+            
+            scene_object.Color = attributes.Color;
+            scene_object.Material = attributes.Material;
+            scene_object.Scale = attributes.Scale;
+            
+          
             sceneObjects.Add(scene_object);
         }
         return sceneObjects;
