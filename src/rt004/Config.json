@@ -13,7 +13,7 @@
     "WorldUpDirection": [ 0, 1, 0 ],
     "Shadows": true,
     "BackgroundColor": [ 0.1, 0.2, 0.3 ],
-    "MaxDepth": 8,
+    "MaxDepth": 4,
     "SceneGraph": "SceneGraph.json",
     "AmbientLighting": [ 1, 1, 1 ],
     "Lightings": {

@@ -500,8 +500,8 @@ public class Ray
 				foreach(double t in intersections)
 				{
 					double param = t;
-					/*if (Intersections.ContainsKey(param))
-						param += Globals.ROUNDING_ERR;*/
+					if (Intersections.ContainsKey(param))
+						param += Globals.ROUNDING_ERR;
 					Intersections.Add(param, shape);
                 }
                 

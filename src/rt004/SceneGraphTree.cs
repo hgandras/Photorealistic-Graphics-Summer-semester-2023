@@ -96,9 +96,9 @@ public class SceneGraph
                                 FinalTransform *=Matrix4d.Transpose(Matrix4d.CreateTranslation(values_vec));
                                 break;
                             case "rotate":
-                                Matrix4d rotX = Matrix4d.CreateRotationX(values_arr[0]);
-                                Matrix4d rotY = Matrix4d.CreateRotationY(values_arr[1]);
-                                Matrix4d rotZ = Matrix4d.CreateRotationZ(values_arr[2]);
+                                Matrix4d rotX = Matrix4d.CreateRotationX( MathTools.Deg2Rad(values_arr[0]));
+                                Matrix4d rotY = Matrix4d.CreateRotationY(MathTools.Deg2Rad(values_arr[1]));
+                                Matrix4d rotZ = Matrix4d.CreateRotationZ(MathTools.Deg2Rad(values_arr[2]));
                                 FinalTransform = rotX * rotZ * rotY;
                                 break;
                         }

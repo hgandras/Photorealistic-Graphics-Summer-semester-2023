@@ -56,9 +56,17 @@ public static class ColorTools
 /// <summary>
 /// For some shortcuts like rad-deg conversion
 /// </summary>
-public class MathTools
+public static class MathTools
 {
+    public static double Deg2Rad(double deg)
+    {
+        return deg / 360 * 2 * Math.PI;
+    }
 
+    public static double Rad2Deg(double rad)
+    {
+        return rad / (2 * Math.PI) * 360;
+    }
 }
 
 
