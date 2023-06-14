@@ -1,12 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Text.Json;
-using System.Threading.Tasks;
+﻿using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using OpenTK.Mathematics;
 
 namespace rt004;
 
@@ -53,56 +46,32 @@ public class Config
 /// </summary>
 public class GeneralConfig
 {   
-    public string fileName { get;   set; } 
+    public string fileName { get; set; } 
     public string color1{ get; set; }
     public string color2 { get; set; }
 }
 
 public class CameraConfig 
 {
-    public float[] Position { get; set; }
-    public float[] Target { get; set; }
-    public float FOV { get; set; }
+    public double[] Position { get; set; }
+    public double[] Target { get; set; }
+    public double FOV { get; set; }
 }
 
 public class SceneConfig
 {
     public ILogger logger = Logging.CreateLogger<SceneConfig>();
-    public float[] WorldUpDirection { get; set; }
+    public double[] WorldUpDirection { get; set; }
     public bool Shadows { get; set; }
     public int MaxDepth { get; set; }
+    public double[] BackgroundColor { get; set; }
+    public string SceneGraph { get; set; }
 
-    public float[] BackgroundColor { get; set; }
-
-    public readonly List<SceneObject> SceneObjects=new List<SceneObject>();
     public readonly List<LightSource> LightSources = new List<LightSource>();
     public void Init()
     {
         try
         {
-            if (Objects.Spheres.Number != Objects.Spheres.Positions.Count())
-                logger.LogWarning("Number of denoted spheres is different than number of positions!");
-            for (int i = 0; i < Objects.Spheres.Number; i++)
-            {
-
-                Material material = Activator.CreateInstance(Type.GetType(Globals.ASSEMBLY_NAME+Objects.Spheres.Materials[i])) as Material;
-                SceneObjects.Add(new Sphere(
-                                ColorTools.ArrToV3d(Objects.Spheres.Colors[i]),
-                                ColorTools.ArrToV3d(Objects.Spheres.Positions[i])
-                                , material
-                                , Objects.Spheres.Radiuses[i]));
-            }
-            if (Objects.Planes.Number != Objects.Planes.Positions.Count())
-                logger.LogWarning("Number of denoted planes is different than number of positions!");
-            for (int i = 0; i < Objects.Planes.Number; i++)
-            {
-                Material material = Activator.CreateInstance(Type.GetType(Globals.ASSEMBLY_NAME + Objects.Spheres.Materials[i])) as Material;
-                SceneObjects.Add(new Plane(ColorTools.ArrToV3d(Objects.Planes.Positions[i])
-                                , ColorTools.ArrToV3d(Objects.Planes.Normals[i])
-                                , ColorTools.ArrToV3d(Objects.Planes.Colors[i])
-                                , material                              
-                                ));
-            }
             if (Lightings.PointLights.Number != Lightings.PointLights.Positions.Count())
                 logger.LogWarning("Number of denoted point lightings is different than number of positions!");
             for (int i=0; i<Lightings.PointLights.Number;i++)
@@ -129,62 +98,33 @@ public class SceneConfig
             logger.LogWarning("Not all object's attributes were specified in config file properly. Not all objects were added to the scene.");
         }
     }
-    public class Obj
-    {
-        /// <summary>
-        /// Creates objects that are in the scene with the given properties. 
-        /// </summary>
-        
-        public class SphereObjects
-        {
-            public int Number { get; set; }
-
-            public string Instance = "Sphere";
-            public List<float[]> Positions { get; set; }
-            public List<float[]> Colors { get; set; }
-            public List<string> Materials { get; set; }
-            public float[] Radiuses { get; set; } 
-        }
-        public class PlaneObjects
-        {
-            public string Instance = "Plane";
-            public int Number { get; set; }
-            public List<float[]> Normals { get; set; }
-            public List<float[]> Positions { get; set; }
-            public List<float[]> Colors { get; set; }
-            public List<string> Materials { get; set; }
-        }
-        public SphereObjects Spheres { get; set; }
-        public PlaneObjects Planes { get; set; }
-
-    }
+    
     public class Lights
     {
         public class PointLighings
         {
             public int Number { get; set; }
-            public List<float[]> Positions { get; set; }
-            public List<float[]> SpecularIntensities { get; set; }
-            public List<float[]> DiffuseIntensities { get; set; }   
+            public List<double[]> Positions { get; set; }
+            public List<double[]> SpecularIntensities { get; set; }
+            public List<double[]> DiffuseIntensities { get; set; }   
         }
 
         public class DirectionalLightings
         {
             public int Number { get; set; }
-            public List<float[]> Directions { get; set; }
-            public List<float[]> SpecularIntensities { get; set; }
-            public List<float[]> DiffuseIntensities { get; set; }
+            public List<double[]> Directions { get; set; }
+            public List<double[]> SpecularIntensities { get; set; }
+            public List<double[]> DiffuseIntensities { get; set; }
         }
         public PointLighings PointLights { get; set; }
         public DirectionalLightings DirectionalLights { get; set; }
 
     }
-    public Obj Objects { get; set; }
     public Lights Lightings { get; set; }
     
-    public List<float[]> PointLightPositions { get; set; }
-    public List<float[]> DirectionalLightDirections { get; set; }
-    public float[] AmbientLighting { get; set; }
+    public List<double[]> PointLightPositions { get; set; }
+    public List<double[]> DirectionalLightDirections { get; set; }
+    public double[] AmbientLighting { get; set; }
 
     
 
@@ -194,6 +134,7 @@ public class PlaneConfig
 {
     public int Height { get; set; }
     public int Width { get; set; }
+    public int RayPerPixel { get; set; }
 }
 
 public static class Logging

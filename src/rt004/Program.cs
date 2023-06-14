@@ -1,31 +1,21 @@
-﻿using System.Formats.Asn1;
-using System.Numerics;
-using Util;
+﻿using Util;
 using System.Drawing;
 using System.Globalization;
-using System.Text.Json;
-using OpenTK.Mathematics;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Configuration;
-//using System.Numerics;
 
 namespace rt004;
 
-
 public class Globals
 {
-    public const float ROUNDING_ERR = 1e-5f;
+    public const double ROUNDING_ERR = 1e-5f;
     public const string ASSEMBLY_NAME = "rt004.";
 }
 
 internal class Program
 {
-  
-
   static void Main(string[] args)
   {
         var logger = Logging.CreateLogger<Program>();
-        // Parameters.
         //Default parameters are specified in the config file, and the command-line arguments 
         //can overwrite them.
         Config config=new Config("Config.json");
@@ -107,7 +97,7 @@ internal class Program
         FloatImage fi = new FloatImage(wid, hei, 3);
 
         //Linearly interpolates between 2 based on the pixel height in a circle.
-        float radius = (float)Math.Min(wid,hei)/2f;
+        double radius = (double)Math.Min(wid,hei)/2f;
                       
         for (int h = 0; h < hei; h++)
         {
@@ -118,7 +108,7 @@ internal class Program
 
                 if (Math.Pow((centered_x), 2) + Math.Pow((centered_y), 2) < Math.Pow(radius, 2))
                 {
-                    Color color_rgb = ColorTools.lerpRGB(color1, color2, 1f/hei*(float)h);
+                    Color color_rgb = ColorTools.lerpRGB(color1, color2, 1f/hei*h);
                     fi.PutPixel(w, h, new float[3] { color_rgb.R, color_rgb.G, color_rgb.B });
                 }
                 else
@@ -149,10 +139,6 @@ internal class Program
         logger.LogInformation("Demo HDR image created");
         //Create scene, and generate the image;
         Scene scene = new Scene(config);
-        /* 
-         * Here methods of the scene can be called (the ones that are implemented), like adding an object, pointing the camera to an added object, 
-         * or simply doing any transformation with the camera. The default scene set up is defined by the config file.
-         */
         FloatImage img=scene.SynthesizeImage();
         img.SavePFM("PathTrace.pfm");
         logger.LogInformation("Path traced image created");

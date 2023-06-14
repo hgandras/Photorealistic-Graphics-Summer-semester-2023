@@ -1,10 +1,5 @@
 ﻿using OpenTK.Mathematics;
-using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace rt004;
 public static class ColorTools
@@ -30,31 +25,31 @@ public static class ColorTools
     /// <param name="color2"></param>
     /// <param name="t">The ratio of the "distance" between the 2 colors, a value in the interval [0,1]</param>
     /// <returns></returns>
-    public static Color lerpRGB(Color color1, Color color2, float t)
+    public static Color lerpRGB(Color color1, Color color2, double t)
     {
-        float r1 = color1.R / 256f;
-        float g1 = color1.G / 256f;
-        float b1 = color1.B / 256f;
+        double r1 = color1.R / 256f;
+        double g1 = color1.G / 256f;
+        double b1 = color1.B / 256f;
 
-        float r2 = color2.R/256f;
-        float g2 = color2.G / 256f;
-        float b2 = color2.B / 256f;
+        double r2 = color2.R/256f;
+        double g2 = color2.G / 256f;
+        double b2 = color2.B / 256f;
 
-        float r = (r1 + ((r2 - r1) * t))*256;
-        float g = (g1 + ((g2 - g1) * t))*256;
-        float b = (b1 + ((b2 - b1) * t)) * 256;
+        double r = (r1 + ((r2 - r1) * t))*256;
+        double g = (g1 + ((g2 - g1) * t))*256;
+        double b = (b1 + ((b2 - b1) * t)) * 256;
 
         return Color.FromArgb((int)r, (int)g, (int)b);
     }
 
-    public static Vector3d ArrToV3d(float[] color)
+    public static Vector3d ArrToV3d(double[] color)
     {
         return new Vector3d(color[0], color[1], color[2]);
     }
 
-    public static float[] V3dToArr(Vector3d color)
+    public static double[] V3dToArr(Vector3d color)
     {
-        return new float[] { (float)color.X, (float)color.Y, (float)color.Z };
+        return new double[] { (double)color.X, (double)color.Y, (double)color.Z };
     }
 }
 
@@ -65,4 +60,5 @@ public class MathTools
 {
 
 }
+
 
