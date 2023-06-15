@@ -83,7 +83,6 @@ public class SceneGraph
                     string[] commands = Transformation.Split(" ");
                     foreach (string command in commands)
                     {
-                        Console.WriteLine(command);
                         int left_bracket = command.IndexOf('(');
                         string transform = command.Substring(0, left_bracket);
                         string values = command.Substring(left_bracket);

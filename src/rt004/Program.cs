@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace rt004;
 
@@ -24,11 +25,11 @@ internal class Program
 
         int wid = config.PlaneConfig.Width;
         int hei = config.PlaneConfig.Height;
-        string fileName = generalConfig.fileName;
+        string fileName = generalConfig.FileName;
         
-        int[] col1 = ColorTools.hex_to_rgb(Convert.ToInt32(generalConfig.color1,16));
+        int[] col1 = ColorTools.hex_to_rgb(Convert.ToInt32(generalConfig.Color1,16));
         Color color1 = Color.FromArgb(col1[0], col1[1], col1[2]);
-        int[] col2 = ColorTools.hex_to_rgb(Convert.ToInt32(generalConfig.color2, 16));
+        int[] col2 = ColorTools.hex_to_rgb(Convert.ToInt32(generalConfig.Color2, 16));
         Color color2 = Color.FromArgb(col2[0], col2[1], col2[2]);
 
         foreach (string arg in args)
@@ -137,10 +138,24 @@ internal class Program
             fi.SavePFM(fileName+".pfm");
         }
         logger.LogInformation("Demo HDR image created");
+
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
         //Create scene, and generate the image;
         Scene scene = new Scene(config);
-        FloatImage img=scene.SynthesizeImage();
-        img.SavePFM("PathTrace.pfm");
-        logger.LogInformation("Path traced image created");
+        if (config.GeneralConfig.Parallel)
+        {
+            logger.LogInformation("Rendering is executed in parallel");
+            scene.SynthesizeImageParallel();
+            scene.Image.SavePFM(config.GeneralConfig.FileNameRaytraced+".pfm");
+        }
+        else
+        {
+            logger.LogInformation("Rendering is executed in sequential");
+            scene.SynthesizeImage();
+            scene.Image.SavePFM(config.GeneralConfig.FileNameRaytraced + ".pfm");
+        }
+        stopwatch.Stop();
+        logger.LogInformation("Path traced image created in {} ms", stopwatch.ElapsedMilliseconds);
   }
 }

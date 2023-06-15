@@ -1,6 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
 using OpenTK.Mathematics;
+using System.Globalization;
+using System.Linq.Expressions;
+using System.Threading.Tasks;
 using Util;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace rt004;
 
@@ -24,8 +28,11 @@ namespace rt004;
 
 public class Scene
 {
-	//Some scene properties
-	public Vector3d WorldUpDirection;
+
+	public FloatImage Image;
+
+    //Some scene properties
+    public Vector3d WorldUpDirection;
     public Vector3d AmbientLighting;
 	public Vector3d BackgroundColor;
     public ProjectionPlane Plane;
@@ -43,9 +50,9 @@ public class Scene
 	public bool DisplayShadows;
 
 	//Lists for storing all scene entities
-	public List<Shape> Objects;
-	public List<Camera> Cameras;
-	public List<LightSource> LightSources;
+	public readonly List<Shape> Objects;
+	public readonly List<Camera> Cameras;
+	public readonly List<LightSource> LightSources;
 
 	//Logger
     private ILogger logger;
@@ -72,9 +79,10 @@ public class Scene
 		DisplayShadows = config.SceneConfig.Shadows;
 		maxDepth = config.SceneConfig.MaxDepth;
 		BackgroundColor = ColorTools.ArrToV3d(config.SceneConfig.BackgroundColor);
+        Image = new FloatImage(Plane.Width, Plane.Height, 3);
 
-		//Add scene elements based on properties
-		try
+        //Add scene elements based on properties
+        try
 		{
 			foreach(LightSource ls in config.SceneConfig.LightSources)
 			{
@@ -176,31 +184,66 @@ public class Scene
 	/// </summary>
 	/// <param name="width"></param>
 	/// <param name="height"></param>
-	public FloatImage SynthesizeImage()
+	public void SynthesizeImage()
 	{
-		FloatImage image = new FloatImage(Plane.Width,Plane.Height,3);
 		//Iterate through the pixels 
 		for(int h=0;h<Plane.Height;h++)
 		{
-			for(int w=0;w<Plane.Width;w++)
+			for (int w = 0; w < Plane.Width; w ++)
 			{
 				//Cast the rays for each h,w pixel
-				List<Ray> rays=Cam.CastRay(Plane, w, h,Plane.RayPerPixel,false);
+				List<Ray> rays = Cam.CastRay(Plane, w, h, Plane.RayPerPixel, false);
 				Vector3d final_color = Vector3d.Zero;
-				//Transform ray to world coordinate system
 				foreach (Ray ray in rays)
 				{
 					int Depth = 0;
-					final_color += RecursiveRayTrace(ray, Depth);	
+					final_color += RecursiveRayTrace(ray, Depth);
 				}
-                image.PutPixel(w, h, Array.ConvertAll(ColorTools.V3dToArr(final_color/Plane.RayPerPixel),item =>(float)item));
-            }
+				Image.PutPixel(w, h, Array.ConvertAll(ColorTools.V3dToArr(final_color / Plane.RayPerPixel), item => (float)item));
+			}
         }
-		return image;
 	}
 
+	private readonly object imageLock = new object();
 
-	private Vector3d RecursiveRayTrace(Ray ray,int depth)
+	/// <summary>
+	/// Renders the image utilising parallel programming.
+	/// </summary>
+	/// <returns></returns>
+    public void SynthesizeImageParallel()
+    {
+        List<Task> tasks = new List<Task>();
+        //Iterate through the pixels 
+        for (int h = 0; h < Plane.Height; h++)
+        {
+			for (int w = 0; w < Plane.Width; w++)
+			{
+				var w_cpy = w;
+				var h_cpy = h;
+				Task task = Task.Run(() => WritePixel(h_cpy, w_cpy));
+				tasks.Add(task);
+			}
+        }
+        Task.WaitAll(tasks.ToArray());
+    }
+
+	private void WritePixel(int h,int w)
+	{
+        //Cast the rays for each h,w pixel
+        List<Ray> rays = Cam.CastRay(Plane, w, h, Plane.RayPerPixel, false);
+        Vector3d final_color = Vector3d.Zero;
+        foreach (Ray ray in rays)
+        {
+            final_color += RecursiveRayTrace(ray, 0);
+        }
+        lock (imageLock)
+        {
+            Image.PutPixel(w, h, Array.ConvertAll(ColorTools.V3dToArr(final_color / Plane.RayPerPixel), item => (float)item));
+        }
+    }
+
+
+    private Vector3d RecursiveRayTrace(Ray ray,int depth)
 	{
         Vector3d pixel_color = Vector3d.Zero;
         Shape? FirstIntersectedObject = ray.FirstIntersectedObject;
@@ -504,7 +547,6 @@ public class Ray
 						param += Globals.ROUNDING_ERR;
 					Intersections.Add(param, shape);
                 }
-                
             }
         }
     }

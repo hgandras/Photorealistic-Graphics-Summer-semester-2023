@@ -1,8 +1,10 @@
 ﻿{
   "GeneralConfig": {
-    "fileName": "demo.pfm",
-    "color1": "0x0000FF",
-    "color2": "0xFFFF00"
+    "FileName": "demo",
+    "FileNameRaytraced": "PathTrace",
+    "Color1": "0x0000FF",
+    "Color2": "0xFFFF00",
+    "Parallel": true
   },
   "CameraConfig": {
     "Position": [ 0, 1,-6],

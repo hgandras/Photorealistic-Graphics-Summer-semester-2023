@@ -46,9 +46,11 @@ public class Config
 /// </summary>
 public class GeneralConfig
 {   
-    public string fileName { get; set; } 
-    public string color1{ get; set; }
-    public string color2 { get; set; }
+    public string FileName { get; set; } 
+    public string FileNameRaytraced { get; set; }
+    public string Color1{ get; set; }
+    public string Color2 { get; set; }
+    public bool Parallel { get; set; }
 }
 
 public class CameraConfig 
