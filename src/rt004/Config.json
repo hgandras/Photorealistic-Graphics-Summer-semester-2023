@@ -4,7 +4,7 @@
     "FileNameRaytraced": "PathTrace",
     "Color1": "0x0000FF",
     "Color2": "0xFFFF00",
-    "Parallel": true
+    "Parallel": false
   },
   "CameraConfig": {
     "Position": [ 0, 3,-6],

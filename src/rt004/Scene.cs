@@ -67,13 +67,12 @@ public class Scene
         SceneGraph scenegraph = new SceneGraph(config.SceneConfig.SceneGraph);
         Objects = scenegraph.RetrieveObjects();
 		LightSources = new List<LightSource>();
+        WorldUpDirection = ColorTools.ArrToV3d(config.SceneConfig.WorldUpDirection);
         Cameras = new List<Camera> //Add perspective camera by default
 		{
 			new PerspectiveCamera(config.CameraConfig,this)
 		};
-		Cameras[0].BindScene(this);
         Cam = Cameras[0];
-		WorldUpDirection = ColorTools.ArrToV3d(config.SceneConfig.WorldUpDirection); 
 		AmbientLighting =ColorTools.ArrToV3d(config.SceneConfig.AmbientLighting);
         Plane = new ProjectionPlane(config.PlaneConfig);
 		DisplayShadows = config.SceneConfig.Shadows;
@@ -303,16 +302,20 @@ public class Scene
 /// <summary>
 /// Represents movable objects in the scene like objects, cameras. Light sources do not inherit from this class, since they behave slightly differently.
 /// </summary>
-public class SceneEntity
+public class SceneObject
 {
     protected Vector4d homogeneous_pos;
 	protected double[] pos;
-	public Vector3d X { get { return x; } }
-	public Vector3d Y { get { return y; } }
-	public Vector3d Z { get { return z; } }
-	protected Vector3d x;
-    protected Vector3d y;
-    protected Vector3d z;
+
+	//Local coordinate system coordinates in world coordinate system
+	public Vector3d X { get { return x.Xyz; } }
+	public Vector3d Y { get { return y.Xyz; } }
+	public Vector3d Z { get { return z.Xyz; } }
+	protected Vector4d x;
+    protected Vector4d y;
+    protected Vector4d z;
+	protected Matrix4d hom_xyz { get { return Matrix4d.Transpose(new Matrix4d(x, y, z, Vector4d.One)); } }
+
 	protected Scene? Scene;
 
     public Vector3d Position
@@ -328,16 +331,16 @@ public class SceneEntity
         }
     }
 
-	public SceneEntity()
+	public SceneObject()
 	{
-		pos=new double[3];
-		x = new Vector3d(1, 0, 0);
-		y = new Vector3d(0, 1, 0);
-		z = new Vector3d(0, 0, 1);
+		pos=new double[3] { 0,0,0};
+		x = new Vector4d(1, 0, 0,1);
+		y = new Vector4d(0, 1, 0,1);
+		z = new Vector4d(0, 0, 1,1);
     }
 
 	/// <summary>
-	/// TODO: Transforms the coordinate system of the object by the given transformation matrix.
+	/// 
 	/// </summary>
 	/// <param name="transform"></param>
 	public void Transform(Matrix4d transform,string sys="world")
@@ -346,8 +349,59 @@ public class SceneEntity
 		{
 			case "world":
                 homogeneous_pos = transform*homogeneous_pos;
+				x = transform * x;
+				y = transform * y;
+				z = transform * z;
                 break;
         }
+    }
+
+	/// <summary>
+	/// A 3x3 matrix which's rows contain the camera coordinate system axes in the world coordinate system.
+	/// </summary>
+	public Matrix3d CameraSystem 
+	{
+		get 
+		{
+			if (Scene != null)
+			{
+				
+				return new Matrix3d(X, Y, Z);
+			}
+			else
+			{	
+				Console.WriteLine("WARNING: Scene is not set for camera.");
+				return new Matrix3d();
+			}
+		}
+	}
+	
+	public Matrix4d TransformMatrix
+	{
+		get 
+		{
+            Matrix4d camSystem = new Matrix4d(new Vector4d(X, 0), new Vector4d(Y, 0), new Vector4d(Z, 0), new Vector4d(0, 0, 0, 1));
+            Matrix4d translation = Matrix4d.CreateTranslation(-Position);
+            translation.Transpose();
+
+			return camSystem * translation;
+        }
+	}
+
+    /// <summary>
+    /// Returns the coordinates of a point in the local system.
+    /// </summary>
+    /// <param name="point">Coordinates of a point in world system.</param>
+    /// <returns></returns>
+    public Vector3d TransformToLocal(Vector3d point)
+    {
+        Matrix4d camSystem = new Matrix4d(new Vector4d(X, 0), new Vector4d(Y, 0), new Vector4d(Z, 0), new Vector4d(0, 0, 0, 1));
+        Matrix4d translation = Matrix4d.CreateTranslation(-Position);
+        //translation.Transpose(); //OpenTK puts the translation to the last ROW, not the last column ???
+
+        Vector4d lookat_cam_system = new Vector4d(point, 1);
+
+        return (camSystem * translation * lookat_cam_system).Xyz;
     }
 }
 
@@ -552,13 +606,8 @@ public class Ray
     }
 }
 
-public class Camera : SceneEntity
+public class Camera : SceneObject
 {
-
-	//TODO: Angle getters.
-	public double ElevationAngle{ get; set; }
-	public double AzimuthAngle { get; set; }
-
 	/// <summary>
 	/// The point the camera's -Z axis is going through.
 	/// </summary>
@@ -578,83 +627,15 @@ public class Camera : SceneEntity
 		t = config.Target;
 		pos = config.Position;
 		homogeneous_pos = new Vector4d(pos[0], pos[1], pos[2], 1);
-	}
+    }
 
 	public Camera(CameraConfig config,Scene scene):this(config)
 	{
 		Scene = scene;
-	}
 
-	/// <summary>
-	/// A 3x3 matrix which's rows contain the camera coordinate system axes in the world coordinate system.
-	/// </summary>
-	public Matrix3d CameraSystem 
-	{
-		get 
-		{
-			if (Scene != null)
-			{
-				Vector3d Z = Vector3d.Normalize(Position - Target); //Target is in -Z
-				Vector3d X = Vector3d.Normalize(Vector3d.Cross(Scene.WorldUpDirection, Z));
-				Vector3d Y = Vector3d.Normalize(Vector3d.Cross(Z,X));
-				return new Matrix3d(X, Y, Z);
-			}
-			else
-			{	
-				Console.WriteLine("WARNING: Scene is not set for camera.");//Create logging for this 
-				return new Matrix3d();
-			}
-		}
-	}
-	
-	public Matrix4d CameraTransformMatrix
-	{
-		get 
-		{
-            Matrix4d camSystem = new Matrix4d(new Vector4d(X, 0), new Vector4d(Y, 0), new Vector4d(Z, 0), new Vector4d(0, 0, 0, 1));
-            Matrix4d translation = Matrix4d.CreateTranslation(-Position);
-            translation.Transpose();
-
-			return camSystem * translation;
-        }
-	}
-
-	/// <summary>
-	/// Camera's X axis in the world coordinate system
-	/// </summary>
-	public new Vector3d X { get { return CameraSystem.Row0; } }
-	/// <summary>
-	/// Camera's Y axis in the world coordinate system
-	/// </summary>
-	public new Vector3d Y { get { return CameraSystem.Row1; } }
-	/// <summary>
-	/// Camera's Z axis in the world coordinate system
-	/// </summary>
-	public new Vector3d Z { get { return CameraSystem.Row2; } }
-
-	/// <summary>
-	/// This lets the camera to associate it with a scene, if it was not set in the constructor.
-	/// </summary>
-	/// <param name="scene"></param>
-	public void BindScene(Scene scene)
-	{
-		Scene=scene;
-	}
-
-	/// <summary>
-	/// Returns the coordinates of a point in the camera system.
-	/// </summary>
-	/// <param name="point">Coordinates of a point in world system.</param>
-	/// <returns></returns>
-	public Vector3d CameraTransform(Vector3d point)
-	{
-        Matrix4d camSystem = new Matrix4d(new Vector4d(X, 0), new Vector4d(Y, 0), new Vector4d(Z, 0), new Vector4d(0, 0, 0, 1));
-        Matrix4d translation = Matrix4d.CreateTranslation(-Position);
-        translation.Transpose(); //OpenTK puts the translation to the last ROW, not the last column ???
-
-        Vector4d lookat_cam_system = new Vector4d(point, 1);
-
-        return (camSystem * translation * lookat_cam_system).Xyz;
+        z =new Vector4d( Vector3d.Normalize(Position - Target),1); //Target is in -Z
+        x =new Vector4d( Vector3d.Normalize(Vector3d.Cross(Scene.WorldUpDirection, Z)),1);
+        y =new Vector4d (Vector3d.Normalize(Vector3d.Cross(Z, X)),1);
     }
 
 	/// <summary>
@@ -666,7 +647,7 @@ public class Camera : SceneEntity
 	public Vector3d LookAt(Vector3d target)
 	{
 		Target=target;
-		return CameraTransform(target);
+		return TransformToLocal(target);
 	}
 
 	/// <summary>
@@ -695,14 +676,7 @@ public class Camera : SceneEntity
 		return LookAt(obj.Position);
 	}
 
-    /// <summary>
-    /// Returns the object's position in the camera world space, if the camera is position in the origin.
-    /// </summary>
-    /// <param name="sceneEntity"></param>
-    public Vector3d TransformToCameraSystem(SceneEntity sceneEntity)
-	{
-		return CameraSystem * sceneEntity.Position;
-	}
+    
 
 	public virtual List<Ray> CastRay(ProjectionPlane plane, int px_x, int px_y,int ray_per_pixel=1,bool CameraSystem=false)
 	{
@@ -755,7 +729,7 @@ public class PerspectiveCamera:Camera
 			{
 				casted_ray.RayScene = Scene;
                 casted_ray.Origin = this.Position;
-                casted_ray.Direction = Vector3d.Normalize((Matrix4d.Invert(this.CameraTransformMatrix) * new Vector4d(casted_ray.Direction, 1)).Xyz - casted_ray.Origin);
+                casted_ray.Direction = Vector3d.Normalize((Matrix4d.Invert(this.TransformMatrix) * new Vector4d(casted_ray.Direction, 1)).Xyz - casted_ray.Origin);
 				casted_ray.GetIntersections(Scene);
             }
 			rays.Add(casted_ray);
@@ -768,24 +742,20 @@ public class PerspectiveCamera:Camera
 /// <summary>
 /// Represents an SceneObject in the scene. Also defines operations between the scene objects. 
 /// </summary>
-public class Shape:SceneEntity
+public class Shape:SceneObject
 {
 	public Vector3d Color { get; set; }
 	public Material Material { get; set; }
 	public double Scale { get; set; }
 	
-	public Shape()
+	public Shape():base()
 	{
 		Color = new Vector3d(255, 0, 0);
 		Material = new Phong1();
 		Position = new Vector3d(0,0,0);
-		//On init the object's coordinates are directed the same way as the world system
-		x = new Vector3d(1, 0, 0);
-		y = new Vector3d(0, 1, 0);
-		z = new Vector3d(0, 0, 1);
 	}
 
-    public Shape(Vector3d color,Material material)
+    public Shape(Vector3d color,Material material):base()
 	{
 		Color= color;
 		Material = material;
@@ -798,6 +768,11 @@ public class Shape:SceneEntity
 	public virtual Vector3d SurfaceNormal(Ray point)
 	{
 		return Vector3d.Zero;
+	}
+
+	public virtual Vector2d SurfaceIntersection(Ray ray)
+	{
+		return Vector2d.Zero;
 	}
 }
 
@@ -821,7 +796,7 @@ public class Sphere:Shape
 		Scale = R;
 		Position = Pos;
 		Material = material;
-	}
+    }
 
 	/// <summary>
 	/// Calculates whether the ray and the object intersect each other. It is important that the ray and the 
@@ -874,6 +849,11 @@ public class Sphere:Shape
         Vector3d Normal = Vector3d.Normalize(first_intersection - Center);
 		return Normal;
 	}
+
+    public override Vector2d SurfaceIntersection(Ray ray)
+    {
+        return base.SurfaceIntersection(ray);
+    }
 }
 
 public class Plane : Shape
@@ -903,6 +883,10 @@ public class Plane : Shape
 		this.Material = Material;
 		this.Color = Color;
 		Position = Point;
+
+		//Set up local coordinate system
+		y = new Vector4d(Normal, 1);
+		
 	}
 
 	/// <summary>
@@ -931,7 +915,7 @@ public class Plane : Shape
 /// <summary>
 /// In case something lighting sepcific comes to my mind. Light 
 /// </summary>
-public class LightSource:SceneEntity
+public class LightSource:SceneObject
 {
 	public virtual Vector3d DiffuseLighting { get; set; }
 	public virtual Vector3d SpecularLighting { get; set; }
