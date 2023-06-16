@@ -1,10 +1,12 @@
 ﻿using OpenTK.Mathematics;
+using System.Runtime.ConstrainedExecution;
+using System.Security.Cryptography.X509Certificates;
 
 namespace rt004;
 
-public abstract class ReflectanceModel
+public interface ReflectanceModel
 {
-    public abstract Vector3d GetReflectedColor(Ray ray, Vector3d ambient_lighting, List<LightSource> light,bool shadows = true);
+    public Vector3d GetReflectedColor(Ray ray, Vector3d ambient_lighting, List<LightSource> light,bool shadows = true);
 }
 
 public class Phong:ReflectanceModel
@@ -28,7 +30,7 @@ public class Phong:ReflectanceModel
     /// <param name="light">The light sources in the scene.</param>
     /// <param name="objects">The objects</param>
     /// <returns></returns>
-    public override Vector3d GetReflectedColor(Ray ray, Vector3d ambient_lighting,List<LightSource> light_sources,bool shadows=true)
+    public  Vector3d GetReflectedColor(Ray ray, Vector3d ambient_lighting,List<LightSource> light_sources,bool shadows=true)
     {
         if (ray.FirstIntersectedObject==null || light_sources.Count()==0)//If the object is not intersected or there are                                                                
             return ambient_lighting;                                     //no light sources in the scene, the pixel value
@@ -47,7 +49,7 @@ public class Phong:ReflectanceModel
         foreach (LightSource light in light_sources)
         {
             Ray light_ray = new Ray(light.Position,intersection_point-light.Position,ray.RayScene);
-            if (shadows)
+            if(shadows)
             {
                 //Since the ray contains the direction normalized, we only have to check if the ray intersects 
                 //any objects between the light source, and the object.
@@ -66,6 +68,84 @@ public class Phong:ReflectanceModel
         }
         Vector3d final_color = (ambient_component + diff_spec_comps) * ray.FirstIntersectedObject.Color;
 
+        return final_color;
+    }
+}
+
+public class CookTorrance : ReflectanceModel
+{
+
+    public double k_s, k_a,m;
+
+    public CookTorrance(double k_s,double k_a,double m)
+    {
+        this.k_a = k_a;
+        this.k_s = k_s;
+        this.m = m;
+    }
+
+    private double MicrofacetDistribution(double n_dot_h)
+    {
+        if (n_dot_h < 0)
+        {
+            return 0.0;
+        }
+        double delta = Math.Acos(n_dot_h);
+        double result = Math.Pow(Math.E, -1 * Math.Pow(Math.Tan(delta) / m,2)) / (Math.PI * m * m * Math.Pow(n_dot_h, 4));
+
+        return result;
+    }
+
+    private double MaskingDistribution(double n_dot_h,double n_dot_v, double n_dot_l, double v_dot_h)
+    {
+        double[] results = new double[] { 1.0, 2 * n_dot_h * n_dot_v / v_dot_h, 2 * n_dot_h * n_dot_l / v_dot_h };
+        return results.Min();
+    }
+    public Vector3d GetReflectedColor(Ray ray, Vector3d ambient_lighting, List<LightSource> light_sources, bool shadows = true)
+    {
+        if (ray.FirstIntersectedObject == null || light_sources.Count() == 0)
+            return ambient_lighting;
+        
+        //Vectors in the scene
+        Vector3d intersection_point = ray.GetRayPoint(ray.FirstIntersection);
+        Vector3d view_direction = -ray.Direction;
+        Vector3d ideal_surface_normal = ray.FirstIntersectedObject.SurfaceNormal(ray);
+        bool IsOutside = ShadeTools.CheckIncidentLocation(ideal_surface_normal, ray.Direction);
+        if (!IsOutside)
+            ideal_surface_normal = -ideal_surface_normal;
+        Vector3d ambient_component = ambient_lighting * k_a;
+
+        
+        double n_dot_v = Math.Max(Vector3d.Dot(ideal_surface_normal,view_direction),0.0);
+        
+
+        Vector3d specular_component = Vector3d.Zero;
+        foreach(LightSource light in light_sources)
+        {
+            //Light ray and adding shadows
+            Ray light_ray = new Ray(light.Position, intersection_point - light.Position, ray.RayScene);
+            if (shadows)
+            {
+                Ray shadowRay = new Ray(intersection_point - light_ray.Direction, -light_ray.Direction, ray.RayScene);
+                if (shadowRay.FirstIntersectedObject != null)
+                    continue;
+            }
+
+            Vector3d light_direction=-light_ray.Direction;
+            Vector3d half_angle = Vector3d.Normalize(light_direction+view_direction);
+
+            //Used dot products
+            double n_dot_l = Math.Max(Vector3d.Dot(ideal_surface_normal, light_direction), 0.0);
+            double n_dot_h = Math.Max(Vector3d.Dot(ideal_surface_normal,half_angle),0.0);
+            double v_dot_h = Math.Max(Vector3d.Dot(view_direction, half_angle), 0.0);
+            if (n_dot_l > 0)
+            {
+                double specular_coefficient = MicrofacetDistribution(n_dot_h) * MaskingDistribution(n_dot_h, n_dot_v, n_dot_l, v_dot_h) / (4 * n_dot_l * n_dot_v);
+
+                specular_component += specular_coefficient * light.SpecularLighting;
+            }
+        }
+        Vector3d final_color = (ambient_component + specular_component) * ray.FirstIntersectedObject.Color;
         return final_color;
     }
 }
@@ -139,6 +219,17 @@ public class Phong5:Material
     public bool Glossy { get { return true; } }
 
     public bool Transparent { get { return false; } }
+}
+
+public class CookTorrance1 : Material
+{
+    public double RefractionIndex { get { return 1.5; } }
+
+    public bool Glossy { get { return true; } }
+
+    public bool Transparent { get { return false; } }
+
+    public ReflectanceModel getReflectance { get { return new CookTorrance(0.1, 0.5, 0.3); } }
 }
 
 public static class ShadeTools

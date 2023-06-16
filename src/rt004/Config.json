@@ -7,7 +7,7 @@
     "Parallel": true
   },
   "CameraConfig": {
-    "Position": [ 0, 1,-6],
+    "Position": [ 0, 3,-6],
     "Target": [ 0, 1,0 ],
     "FOV": 60
   },
@@ -20,21 +20,21 @@
     "AmbientLighting": [ 1, 1, 1 ],
     "Lightings": {
       "PointLights": {
-        "Number": 3,
+        "Number": 2,
         "Positions": [
           [ -10, 8, -6 ],
-          [ 0, 20, -3 ],
-          [0,10,10]
+          [ 0, 20, -3 ]
+          
         ],
         "SpecularIntensities": [
           [ 1, 1, 1 ],
-          [ 0.3, 0.3, 0.3 ],
-          [0.5,0.5,0.5]
+          [ 0.3, 0.3, 0.3 ]
+          
         ],
         "DiffuseIntensities": [
           [ 1, 1, 1 ],
-          [ 0.3, 0.3, 0.3 ],
-          [0.5,0.5,0.5]
+          [ 0.3, 0.3, 0.3 ]
+          
         ]
       },
       "DirectionalLights": {
