@@ -37,13 +37,13 @@ public class Phong:ReflectanceModel
                                                                          //is just the ambient lighting
         Vector3d intersection_point = ray.GetRayPoint(ray.FirstIntersection);
         Vector3d surface_normal;
-       /* if(ray.FirstIntersectedObject.Texture!=null)
+        if(ray.FirstIntersectedObject.Texture!=null)
         {
             surface_normal = ray.FirstIntersectedObject.Texture.Normal(ray);
             intersection_point = ray.FirstIntersectedObject.Texture.BumpMap(ray);
         }
-        else*/
-        surface_normal = ray.FirstIntersectedObject.SurfaceNormal(ray);
+        else
+            surface_normal = ray.FirstIntersectedObject.SurfaceNormal(ray);
         bool IsOutside = ShadeTools.CheckIncidentLocation(surface_normal, ray.Direction);
         if (!IsOutside)
             surface_normal = -surface_normal;
@@ -74,12 +74,12 @@ public class Phong:ReflectanceModel
             diff_spec_comps += (diffuse_component + specular_component);
         }
         Vector3d final_color;
-        /*if(ray.FirstIntersectedObject.Texture!=null)
+        if(ray.FirstIntersectedObject.Texture!=null)
         {
             final_color = (ambient_component + diff_spec_comps) * ray.FirstIntersectedObject.Texture.Sample(ray);
         }
-        else*/
-        final_color = (ambient_component + diff_spec_comps) * ray.FirstIntersectedObject.Color;
+        else
+            final_color = (ambient_component + diff_spec_comps) * ray.FirstIntersectedObject.Color;
 
         return final_color;
     }
