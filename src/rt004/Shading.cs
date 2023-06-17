@@ -325,7 +325,7 @@ public class SinCosBumpMap : Texture
         double u = uv.X;
         double v = uv.Y;
 
-        double B= Math.Cos(20*v)*Math.Sin(20*u)/100;
+        double B= Math.Cos(20*v)*Math.Sin(20*u)/50;
         Vector3d FinalPoint = ray.GetRayPoint(ray.FirstIntersection) + B * ray.FirstIntersectedObject.SurfaceNormal(ray);
 
         return FinalPoint;
@@ -341,8 +341,8 @@ public class SinCosBumpMap : Texture
         Vector3d n_cross_v = Vector3d.Cross(N,V);
         Vector3d n_cross_u = Vector3d.Cross(N, U);
 
-        Func<double, double, double> dBdU = (u, v) =>  Math.Cos(20*v)*Math.Cos(20 * u)*20 / 100;
-        Func<double, double, double> dBdV = (u, v) => -Math.Sin(20*v)*Math.Sin(20*u)*20/100;
+        Func<double, double, double> dBdU = (u, v) =>  Math.Cos(20*v)*Math.Cos(20 * u)*20 / 50;
+        Func<double, double, double> dBdV = (u, v) => -Math.Sin(20*v)*Math.Sin(20*u)*20/50;
 
         Vector2d uv = ray.FirstIntersectedObject.SurfaceIntersection(ray);
         double u = uv.X;

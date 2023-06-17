@@ -45,7 +45,8 @@
       "Attributes": {
         "Clr": [ 0.9, 0.9, 0.9 ],
         "Mat": "Phong2",
-        "Scale": 1
+        "Scale": 1,
+        "Txt": "SinCosBumpMap"
       },
       "Children": [
         {
