@@ -49,6 +49,6 @@
   "PlaneConfig": {
     "Height": 800 ,
     "Width": 1200,
-    "RayPerPixel":20
+    "RayPerPixel":4
   }
 }

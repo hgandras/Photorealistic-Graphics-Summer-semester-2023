@@ -270,19 +270,9 @@ public class Scene
 		if (!IsOutside) //Swap the two values, if the ray is coming out from the object.
 			(n1,n2)= (n2,n1);
 
-		
-
 		//Approximate fresnel term for reflection
         double reflection_coeff = ShadeTools.Fresnel(ViewDirection, SurfaceNormal, n1, n2);
 		double refraction_coeff = 1 - reflection_coeff;
-
-        
-		//TODO: Consider normal modulating textures, this is just here for texting.
-        if (FirstIntersectedObject.Texture != null)
-        {
-            Vector2d SurfacePoints = FirstIntersectedObject.SurfaceIntersection(ray);
-            return FirstIntersectedObject.Texture.Sample(SurfacePoints);
-        }
 
         if (FirstIntersectedObject.Material.Glossy)
 		{
@@ -771,6 +761,12 @@ public class Shape:SceneObject
 		Material = material;
 		Texture = texture;
 	}
+
+	public virtual Matrix3d GetLocalCoordinate(Ray ray)
+	{
+		return Matrix3d.Identity;
+	}
+
 	public virtual double[]? Intersection(Ray ray)
 	{
 		return new double[] {double.PositiveInfinity};
@@ -877,6 +873,16 @@ public class Sphere:Shape
 
 		return new Vector2d(u,v);
     }
+
+	
+    public override Matrix3d GetLocalCoordinate(Ray ray)
+    {
+		Vector3d N = SurfaceNormal(ray);
+		Vector3d U = Vector3d.Cross(N,Y);
+		Vector3d V = Vector3d.Cross(U,N);
+
+		return new Matrix3d(U,V,N);
+    }
 }
 
 public class Plane : Shape
@@ -920,11 +926,16 @@ public class Plane : Shape
 		z = new Vector4d(Vector3d.Cross(X,Y),1);	
 	}
 
-	/// <summary>
-	/// Calculates the intersection of a plane, and a ray.
-	/// </summary>
-	/// <param name="ray"></param>
-	/// <returns>The parameters t of the ray in the intersection points</returns>
+    public override Matrix3d GetLocalCoordinate(Ray ray)
+    {
+		return new Matrix3d(X,Y,Z);
+    }
+
+    /// <summary>
+    /// Calculates the intersection of a plane, and a ray.
+    /// </summary>
+    /// <param name="ray"></param>
+    /// <returns>The parameters t of the ray in the intersection points</returns>
     public override double[]? Intersection(Ray ray)
     {
         double denominator = (double)Vector3d.Dot(ray.Direction, -SurfaceNormal(ray));

@@ -36,7 +36,14 @@ public class Phong:ReflectanceModel
             return ambient_lighting;                                     //no light sources in the scene, the pixel value
                                                                          //is just the ambient lighting
         Vector3d intersection_point = ray.GetRayPoint(ray.FirstIntersection);
-        Vector3d surface_normal = ray.FirstIntersectedObject.SurfaceNormal(ray);
+        Vector3d surface_normal;
+       /* if(ray.FirstIntersectedObject.Texture!=null)
+        {
+            surface_normal = ray.FirstIntersectedObject.Texture.Normal(ray);
+            intersection_point = ray.FirstIntersectedObject.Texture.BumpMap(ray);
+        }
+        else*/
+        surface_normal = ray.FirstIntersectedObject.SurfaceNormal(ray);
         bool IsOutside = ShadeTools.CheckIncidentLocation(surface_normal, ray.Direction);
         if (!IsOutside)
             surface_normal = -surface_normal;
@@ -66,7 +73,13 @@ public class Phong:ReflectanceModel
 
             diff_spec_comps += (diffuse_component + specular_component);
         }
-        Vector3d final_color = (ambient_component + diff_spec_comps) * ray.FirstIntersectedObject.Color;
+        Vector3d final_color;
+        /*if(ray.FirstIntersectedObject.Texture!=null)
+        {
+            final_color = (ambient_component + diff_spec_comps) * ray.FirstIntersectedObject.Texture.Sample(ray);
+        }
+        else*/
+        final_color = (ambient_component + diff_spec_comps) * ray.FirstIntersectedObject.Color;
 
         return final_color;
     }
@@ -108,8 +121,15 @@ public class CookTorrance : ReflectanceModel
         
         //Vectors in the scene
         Vector3d intersection_point = ray.GetRayPoint(ray.FirstIntersection);
+        Vector3d ideal_surface_normal;
+        if (ray.FirstIntersectedObject.Texture != null)
+        {
+            ideal_surface_normal = ray.FirstIntersectedObject.Texture.Normal(ray);
+            intersection_point = ray.FirstIntersectedObject.Texture.BumpMap(ray);
+        }
+        else
+            ideal_surface_normal = ray.FirstIntersectedObject.SurfaceNormal(ray);
         Vector3d view_direction = -ray.Direction;
-        Vector3d ideal_surface_normal = ray.FirstIntersectedObject.SurfaceNormal(ray);
         bool IsOutside = ShadeTools.CheckIncidentLocation(ideal_surface_normal, ray.Direction);
         if (!IsOutside)
             ideal_surface_normal = -ideal_surface_normal;
@@ -145,7 +165,14 @@ public class CookTorrance : ReflectanceModel
                 specular_component += specular_coefficient * light.SpecularLighting;
             }
         }
-        Vector3d final_color = (ambient_component + specular_component) * ray.FirstIntersectedObject.Color;
+        Vector3d final_color;
+        if (ray.FirstIntersectedObject.Texture != null)
+        {
+            final_color = (ambient_component + specular_component) * ray.FirstIntersectedObject.Texture.Sample(ray);
+        }
+        else
+            final_color = (ambient_component + specular_component) * ray.FirstIntersectedObject.Color;
+
         return final_color;
     }
 }
@@ -235,9 +262,10 @@ public class CookTorrance1 : Material
 
 public interface Texture
 {
-    public Vector3d Sample(Vector2d SurfaceCoordinates);
+    public Vector3d Normal(Ray ray);
+    public Vector3d BumpMap(Ray ray);
+    public Vector3d Sample(Ray ray);
 }
-
 
 public class CheckerBoard:Texture
 {
@@ -246,14 +274,31 @@ public class CheckerBoard:Texture
 
     public CheckerBoard()
     {
-        this.w = 1;
-        this.h = 1;
+        this.w = 0.3;
+        this.h = 0.15;
         this.color1=new Vector3d(0.0,0.0,0.0);
         this.color2 = new Vector3d(1.0, 1.0, 1.0);
     }
 
-    public Vector3d Sample(Vector2d SurfaceCoordinates)
+    public Vector3d BumpMap(Ray ray)
     {
+        return ray.GetRayPoint(ray.FirstIntersection);
+    }
+
+    public Vector3d Normal(Ray ray)
+    {
+        return ray.FirstIntersectedObject.SurfaceNormal(ray);
+    }
+
+    public Vector3d Sample(Ray ray)
+    {
+        Vector2d SurfaceCoordinates;
+        if(ray.FirstIntersectedObject== null)
+        {
+            return ray.RayScene.BackgroundColor;
+        }
+        SurfaceCoordinates = ray.FirstIntersectedObject.SurfaceIntersection(ray);
+
         double u= SurfaceCoordinates.X;
         double v = SurfaceCoordinates.Y;
 
@@ -269,6 +314,48 @@ public class CheckerBoard:Texture
             default: 
                 return color2;
         }
+    }
+}
+
+public class SinCosBumpMap : Texture
+{
+    public Vector3d BumpMap(Ray ray)
+    {
+        Vector2d uv = ray.FirstIntersectedObject.SurfaceIntersection(ray);
+        double u = uv.X;
+        double v = uv.Y;
+
+        double B= Math.Cos(20*v)*Math.Sin(20*u)/200;
+        Vector3d FinalPoint = ray.GetRayPoint(ray.FirstIntersection) + B * ray.FirstIntersectedObject.SurfaceNormal(ray);
+
+        return FinalPoint;
+    }
+
+    public Vector3d Normal(Ray ray)
+    {
+        Matrix3d LocalSystem = ray.FirstIntersectedObject.GetLocalCoordinate(ray);
+        Vector3d N = LocalSystem.Row2;
+        Vector3d U = LocalSystem.Row0;
+        Vector3d V = LocalSystem.Row1;
+
+        Vector3d n_cross_v = Vector3d.Cross(N,V);
+        Vector3d n_cross_u = Vector3d.Cross(N, U);
+
+        Func<double, double, double> dBdU = (u, v) =>  Math.Cos(20*v)*Math.Cos(20 * u)*20 / 200;
+        Func<double, double, double> dBdV = (u, v) => -Math.Sin(20*v)*Math.Sin(20*u)*20/200;
+
+        Vector2d uv = ray.FirstIntersectedObject.SurfaceIntersection(ray);
+        double u = uv.X;
+        double v = uv.Y;
+
+        Vector3d modified_normal = N + (dBdU(u, v) * n_cross_v - dBdV(u, v) * n_cross_u) / N.Length;
+
+        return Vector3d.Normalize(modified_normal);
+    }
+
+    public Vector3d Sample(Ray ray)
+    {
+        return ray.FirstIntersectedObject.Color;
     }
 }
 
