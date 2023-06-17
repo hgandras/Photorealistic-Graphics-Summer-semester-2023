@@ -4,10 +4,10 @@
     "FileNameRaytraced": "PathTrace",
     "Color1": "0x0000FF",
     "Color2": "0xFFFF00",
-    "Parallel": false
+    "Parallel": true
   },
   "CameraConfig": {
-    "Position": [ 0, 3,-6],
+    "Position": [ 0, 1,-7],
     "Target": [ 0, 1,0 ],
     "FOV": 60
   },
@@ -49,6 +49,6 @@
   "PlaneConfig": {
     "Height": 800 ,
     "Width": 1200,
-    "RayPerPixel":4
+    "RayPerPixel":20
   }
 }

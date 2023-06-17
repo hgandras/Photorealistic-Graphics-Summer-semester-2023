@@ -270,9 +270,20 @@ public class Scene
 		if (!IsOutside) //Swap the two values, if the ray is coming out from the object.
 			(n1,n2)= (n2,n1);
 
+		
+
 		//Approximate fresnel term for reflection
         double reflection_coeff = ShadeTools.Fresnel(ViewDirection, SurfaceNormal, n1, n2);
 		double refraction_coeff = 1 - reflection_coeff;
+
+        
+		//TODO: Consider normal modulating textures, this is just here for texting.
+        if (FirstIntersectedObject.Texture != null)
+        {
+            Vector2d SurfacePoints = FirstIntersectedObject.SurfaceIntersection(ray);
+            return FirstIntersectedObject.Texture.Sample(SurfacePoints);
+        }
+
         if (FirstIntersectedObject.Material.Glossy)
 		{
 			Vector3d ReflectedRayDirection = 2 * Vector3d.Dot(ViewDirection,SurfaceNormal) * SurfaceNormal + ray.Direction;
@@ -343,17 +354,14 @@ public class SceneObject
 	/// 
 	/// </summary>
 	/// <param name="transform"></param>
-	public void Transform(Matrix4d transform,string sys="world")
+	public virtual void Transform(Matrix4d transform)
 	{
-		switch(sys)
-		{
-			case "world":
-                homogeneous_pos = transform*homogeneous_pos;
-				x = transform * x;
-				y = transform * y;
-				z = transform * z;
-                break;
-        }
+        homogeneous_pos = transform*homogeneous_pos;
+		//Transform local coordinates only by the rotations.
+		Matrix4d rotation = Matrix4d.Transpose(Matrix4d.Transpose(transform).ClearTranslation());
+		x = rotation * x;
+		y = rotation * y;
+		z = rotation * z;
     }
 
 	/// <summary>
@@ -513,7 +521,7 @@ public class Ray
 	}
 
 	/// <summary>
-	/// Returns the parameter t, which represents the ray intersection.
+	/// Returns the parameter t, which represents the ray intersection. If no objects are intersected return infinity.
 	/// </summary>
 	public double FirstIntersection {
 		get
@@ -747,18 +755,21 @@ public class Shape:SceneObject
 	public Vector3d Color { get; set; }
 	public Material Material { get; set; }
 	public double Scale { get; set; }
+	public Texture? Texture { get; set; }
 	
 	public Shape():base()
 	{
 		Color = new Vector3d(255, 0, 0);
 		Material = new Phong1();
 		Position = new Vector3d(0,0,0);
+		Texture = null;
 	}
 
-    public Shape(Vector3d color,Material material):base()
+    public Shape(Vector3d color,Material material,Texture? texture=null):base()
 	{
 		Color= color;
 		Material = material;
+		Texture = texture;
 	}
 	public virtual double[]? Intersection(Ray ray)
 	{
@@ -852,7 +863,19 @@ public class Sphere:Shape
 
     public override Vector2d SurfaceIntersection(Ray ray)
     {
-        return base.SurfaceIntersection(ray);
+		if(ray.FirstIntersectedObject==null)
+		{
+			return Vector2d.PositiveInfinity;
+		}
+		Vector3d Normal = ray.FirstIntersectedObject.SurfaceNormal(ray);
+
+		double Azimuth = Math.Acos(-Vector3d.Dot(Y,Normal));
+		double Elevation = Math.Acos(Vector3d.Dot(X,Normal)/Math.Sin(Azimuth))/2*Math.PI;
+
+		double v = Azimuth / Math.PI;
+		double u = Vector3d.Dot(Vector3d.Cross(Y, X), Normal) > 0 ? Elevation : 1 - Elevation;
+
+		return new Vector2d(u,v);
     }
 }
 
@@ -870,7 +893,7 @@ public class Plane : Shape
 		Material = new Phong1();
 		Color = new Vector3d(0.9,0.9,0.9);
 		Position = Vector3d.Zero;
-	}
+    }
 
 	/// <summary>
 	/// Creates the plane from the normal, and a point that lies on the plane. 
@@ -886,7 +909,15 @@ public class Plane : Shape
 
 		//Set up local coordinate system
 		y = new Vector4d(Normal, 1);
-		
+
+		double D = -Vector3d.Dot(Normal, Position);
+		double x_coordinate = Position.X+1;
+		double y_coordinate = Position.Y;
+		double z_coordinate = (Normal.X * x_coordinate + Normal.Y * y_coordinate + D)/-Normal.Z;
+
+		Vector3d x_vector = Vector3d.Normalize(new Vector3d(x_coordinate,y_coordinate,z_coordinate));
+		x = new Vector4d(x_vector,1);
+		z = new Vector4d(Vector3d.Cross(X,Y),1);	
 	}
 
 	/// <summary>
@@ -910,6 +941,21 @@ public class Plane : Shape
 	{
 		return Normal;
 	}
+
+    public override void Transform(Matrix4d transform)
+    {
+        base.Transform(transform);
+        Matrix4d rotation = Matrix4d.Transpose(Matrix4d.Transpose(transform).ClearTranslation());
+        Normal = (rotation * new Vector4d(Normal,1)).Xyz;
+    }
+
+    public override Vector2d SurfaceIntersection(Ray ray)
+    {
+		Vector3d intersection = ray.GetRayPoint(ray.FirstIntersection);
+		Vector2d Pos = new Vector2d(intersection.X-Position.X,intersection.Z-Position.Z);
+		Matrix2d local = new Matrix2d(X.Xz,Z.Xz);
+		return Matrix2d.Invert(local) * Pos;
+    }
 }
 
 /// <summary>

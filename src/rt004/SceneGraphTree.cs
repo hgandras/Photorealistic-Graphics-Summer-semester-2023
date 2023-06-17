@@ -43,6 +43,7 @@ public class SceneGraph
         public Vector3d Color { get { return ColorTools.ArrToV3d(Clr); } }
         public double Scale { get; set; }
         public string Mat {get;set;}
+        public string Txt { get; set; }
         public Material? Material { 
             get
             {
@@ -53,6 +54,18 @@ public class SceneGraph
                 }
                 return priv_mat;
  
+            }
+        }
+
+        public Texture? Texture {
+            get
+            {
+                Texture? priv_mat = null;
+                if (Txt != null)
+                {
+                    priv_mat = Activator.CreateInstance(Type.GetType(Globals.ASSEMBLY_NAME + Txt)) as Texture;
+                }
+                return priv_mat;
             }
         }
     }
@@ -153,6 +166,7 @@ public class SceneGraph
             scene_object.Color = attributes.Color;
             scene_object.Material = attributes.Material;
             scene_object.Scale = attributes.Scale;
+            scene_object.Texture = attributes.Texture;
             
           
             sceneObjects.Add(scene_object);

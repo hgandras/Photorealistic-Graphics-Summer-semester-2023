@@ -232,6 +232,47 @@ public class CookTorrance1 : Material
     public ReflectanceModel getReflectance { get { return new CookTorrance(0.1, 0.5, 0.3); } }
 }
 
+
+public interface Texture
+{
+    public Vector3d Sample(Vector2d SurfaceCoordinates);
+}
+
+
+public class CheckerBoard:Texture
+{
+    public double w, h;
+    public Vector3d color1, color2;
+
+    public CheckerBoard()
+    {
+        this.w = 1;
+        this.h = 1;
+        this.color1=new Vector3d(0.0,0.0,0.0);
+        this.color2 = new Vector3d(1.0, 1.0, 1.0);
+    }
+
+    public Vector3d Sample(Vector2d SurfaceCoordinates)
+    {
+        double u= SurfaceCoordinates.X;
+        double v = SurfaceCoordinates.Y;
+
+        int x_parity = (int)Math.Floor(u / w) % 2;
+        int y_parity = (int)Math.Floor(v / h) % 2;
+
+        int final_tile = (x_parity + y_parity) % 2;
+        switch(final_tile)
+        {
+            case 0:
+                return color1;
+
+            default: 
+                return color2;
+        }
+    }
+}
+
+
 public static class ShadeTools
 {
     /// <summary>
@@ -285,9 +326,9 @@ public static class ShadeTools
     /// <param name="incident_direction"></param>
     /// <returns>bool, true if the ray and normal are on the outside surface of the object, false if ray is 
     /// on the inside surface.</returns>
-    public static bool CheckIncidentLocation(Vector3d normal,Vector3d incident_direction)
+    public static bool CheckIncidentLocation(Vector3d normal, Vector3d incident_direction)
     {
-        double angle = Vector3d.CalculateAngle(normal,incident_direction);
+        double angle = Vector3d.CalculateAngle(normal, incident_direction);
         if (angle > Math.PI / 2.0 || angle < -Math.PI / 2.0)
             return true;
         return false;
