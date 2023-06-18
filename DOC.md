@@ -8,9 +8,6 @@ The program generates an image with a circle inside with the diameter of the siz
 the circle with the pixel height.  
 
 It generates another image based on path tracing, which is saved as PathTrace.pfm . The initial image can be modified from the config file. 
-
-![pt_image](ExampleImages/PathTrace.png "The default path traced image")
-
 ## The config files
 The config file is a json file, its contents are serialized into classes that have the same properties as in the
 config file.  
