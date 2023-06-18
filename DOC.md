@@ -241,7 +241,7 @@ normal vector on the surface. `Sample` samples a color on the surface.
  ## Color textures
  Here the point is to show that the texture is rotating together with the object. The reflection model used here is a Phong 
  a glossy phong model.
-   ![pt_image](ExampleImages/ColorTExture.png "The default path traced image")
+   ![pt_image](ExampleImages/ColorTexture.png "The default path traced image")
 
  ## Bump maps
  The bump map function is  $P(u,v)=\frac{\cos(20\cdot v)\cdot\sin(20\cdot u)}{50}$. Again it shows
