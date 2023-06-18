@@ -150,27 +150,27 @@ public class SceneGraph
         List<Shape> sceneObjects = new List<Shape>();
         Matrix4d current_transform =node.Transform*transform;
         Attribs? attributes = node.Attributes != null ? node.Attributes : attribs;
-        
-        if(node.Children != null)
+
+        if (node.Object != null)
+        {
+            Shape scene_object = node.Object;
+            scene_object.Transform(current_transform);
+
+            scene_object.Color = attributes.Color;
+            scene_object.Material = attributes.Material;
+            scene_object.Scale = attributes.Scale;
+            scene_object.Texture = attributes.Texture;
+
+            sceneObjects.Add(scene_object);
+        }
+        if (node.Children != null)
         {
             foreach (Node child in node.Children)
             {
                 sceneObjects=sceneObjects.Concat(traverse(child, current_transform, attributes)).ToList();
             }
         }
-        else if(node.Object!=null)
-        {
-            Shape scene_object = node.Object;
-            scene_object.Transform(current_transform);
-            
-            scene_object.Color = attributes.Color;
-            scene_object.Material = attributes.Material;
-            scene_object.Scale = attributes.Scale;
-            scene_object.Texture = attributes.Texture;
-            
-          
-            sceneObjects.Add(scene_object);
-        }
+        
         return sceneObjects;
     }
 

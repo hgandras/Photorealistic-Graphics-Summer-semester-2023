@@ -70,6 +70,9 @@ public class SceneConfig
     public string SceneGraph { get; set; }
 
     public readonly List<LightSource> LightSources = new List<LightSource>();
+    /// <summary>
+    /// Creates the light source objects, adds them to a list.
+    /// </summary>
     public void Init()
     {
         try
@@ -148,5 +151,4 @@ public static class Logging
 
         return logger;
     }
-
 }

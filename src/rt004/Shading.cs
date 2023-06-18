@@ -256,8 +256,31 @@ public class CookTorrance1 : Material
 
     public bool Transparent { get { return false; } }
 
-    public ReflectanceModel getReflectance { get { return new CookTorrance(0.1, 0.5, 0.3); } }
+    public ReflectanceModel getReflectance { get { return new CookTorrance(0.1, 0.5, 0.1); } }
 }
+
+public class CookTorrance2 : Material
+{
+    public double RefractionIndex { get { return 1.5; } }
+
+    public bool Glossy { get { return true; } }
+
+    public bool Transparent { get { return false; } }
+
+    public ReflectanceModel getReflectance { get { return new CookTorrance(0.1, 0.5, 0.2); } }
+}
+public class CookTorrance3 : Material
+{
+    public double RefractionIndex { get { return 1.5; } }
+
+    public bool Glossy { get { return true; } }
+
+    public bool Transparent { get { return false; } }
+
+    public ReflectanceModel getReflectance { get { return new CookTorrance(0.1, 0.5, 0.5); } }
+}
+
+
 
 
 public interface Texture
@@ -267,15 +290,15 @@ public interface Texture
     public Vector3d Sample(Ray ray);
 }
 
-public class CheckerBoard:Texture
+public class CheckerBoardBig:Texture
 {
     public double w, h;
     public Vector3d color1, color2;
 
-    public CheckerBoard()
+    public CheckerBoardBig()
     {
-        this.w = 0.3;
-        this.h = 0.15;
+        this.w = 2.0;
+        this.h = 2.0;
         this.color1=new Vector3d(0.0,0.0,0.0);
         this.color2 = new Vector3d(1.0, 1.0, 1.0);
     }
@@ -312,6 +335,55 @@ public class CheckerBoard:Texture
                 return color1;
 
             default: 
+                return color2;
+        }
+    }
+}
+public class CheckerBoardSmall : Texture
+{
+    public double w, h;
+    public Vector3d color1, color2;
+
+    public CheckerBoardSmall()
+    {
+        this.w = 0.3;
+        this.h = 0.1;
+        this.color1 = new Vector3d(0.0, 0.0, 0.0);
+        this.color2 = new Vector3d(1.0, 1.0, 1.0);
+    }
+
+    public Vector3d BumpMap(Ray ray)
+    {
+        return ray.GetRayPoint(ray.FirstIntersection);
+    }
+
+    public Vector3d Normal(Ray ray)
+    {
+        return ray.FirstIntersectedObject.SurfaceNormal(ray);
+    }
+
+    public Vector3d Sample(Ray ray)
+    {
+        Vector2d SurfaceCoordinates;
+        if (ray.FirstIntersectedObject == null)
+        {
+            return ray.RayScene.BackgroundColor;
+        }
+        SurfaceCoordinates = ray.FirstIntersectedObject.SurfaceIntersection(ray);
+
+        double u = SurfaceCoordinates.X;
+        double v = SurfaceCoordinates.Y;
+
+        int x_parity = (int)Math.Floor(u / w) % 2;
+        int y_parity = (int)Math.Floor(v / h) % 2;
+
+        int final_tile = (x_parity + y_parity) % 2;
+        switch (final_tile)
+        {
+            case 0:
+                return color1;
+
+            default:
                 return color2;
         }
     }

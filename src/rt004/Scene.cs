@@ -36,8 +36,6 @@ public class Scene
     public Vector3d AmbientLighting;
 	public Vector3d BackgroundColor;
     public ProjectionPlane Plane;
-    public int PlaneWidthPx;
-    public int PlaneHeightPx;
 	public int maxDepth;
     public int ObjectCount { get { return Objects.Count(); } }
     public int CamCount { get { return Cameras.Count(); } }
@@ -283,7 +281,6 @@ public class Scene
 		}
 		if(FirstIntersectedObject.Material.Transparent)
 		{
-            //TODO: Solve material boundaries. Right now it assumes that solids are only in contact with air, and no other solids.
             double cos_incident = Vector3d.Dot(ViewDirection, SurfaceNormal);
 			double n_relative = n1/n2;
             double CritAngleCheck = 1 - n_relative * n_relative * (1 - cos_incident * cos_incident);
@@ -357,7 +354,7 @@ public class SceneObject
 	/// <summary>
 	/// A 3x3 matrix which's rows contain the camera coordinate system axes in the world coordinate system.
 	/// </summary>
-	public Matrix3d CameraSystem 
+	public Matrix3d LocalSystem 
 	{
 		get 
 		{
@@ -974,8 +971,8 @@ public class Plane : Shape
 /// </summary>
 public class LightSource:SceneObject
 {
-	public virtual Vector3d DiffuseLighting { get; set; }
-	public virtual Vector3d SpecularLighting { get; set; }
+	public Vector3d DiffuseLighting { get; set; }
+	public Vector3d SpecularLighting { get; set; }
 }
 
 public class PointLight:LightSource

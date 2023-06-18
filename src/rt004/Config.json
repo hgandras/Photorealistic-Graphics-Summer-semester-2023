@@ -7,15 +7,15 @@
     "Parallel": true
   },
   "CameraConfig": {
-    "Position": [ 0, 3,-7],
-    "Target": [ 0, 1,0 ],
+    "Position": [ 0, 2, -6 ],
+    "Target": [ 0, 1, 0 ],
     "FOV": 60
   },
   "SceneConfig": {
     "WorldUpDirection": [ 0, 1, 0 ],
     "Shadows": true,
     "BackgroundColor": [ 0.1, 0.2, 0.3 ],
-    "MaxDepth": 4,
+    "MaxDepth": 6,
     "SceneGraph": "SceneGraph.json",
     "AmbientLighting": [ 1, 1, 1 ],
     "Lightings": {
@@ -24,17 +24,16 @@
         "Positions": [
           [ -10, 8, -6 ],
           [ 0, 20, -3 ]
-          
         ],
         "SpecularIntensities": [
           [ 1, 1, 1 ],
           [ 0.3, 0.3, 0.3 ]
-          
+
         ],
         "DiffuseIntensities": [
           [ 1, 1, 1 ],
           [ 0.3, 0.3, 0.3 ]
-          
+
         ]
       },
       "DirectionalLights": {
@@ -43,12 +42,11 @@
         "SpecularIntensities": [],
         "DiffureIntensities": []
       }
-
     }
   },
   "PlaneConfig": {
-    "Height": 800 ,
+    "Height": 800,
     "Width": 1200,
-    "RayPerPixel":4
+    "RayPerPixel": 20
   }
 }
