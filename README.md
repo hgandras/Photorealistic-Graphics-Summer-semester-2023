@@ -223,26 +223,26 @@ normal vector on the surface. `Sample` samples a color on the surface.
  One sphere on the left is not glossy, the other two reflect light. Each sphere has different coefficients for the specular, diffuse, and 
  ambient components.  
    
-![pt_image](ExampleImages/Phong.png "The default path traced image")
+![pt_image](ExampleImages/Phong.png "Spheres with Phong reflection model")
 
  ## Transparency
  The left object is just simply transparent, the middle is a glass sphere with an air bubble inside, and  the last one is 
  a colored transparent sphere. 
 
- ![pt_image](ExampleImages/Transparent.png "The default path traced image")
+ ![pt_image](ExampleImages/Transparent.png "Spheres with reflection and refractions")
 
  ## Cook-Torrance model
  Some cook torrance model reflections with different `m` slope values of 0.1, 0.2, and 0.5.
-  ![pt_image](ExampleImages/CookTorrance.png "The default path traced image")
+  ![pt_image](ExampleImages/CookTorrance.png "Microfacet reflection model")
 
  ## Color textures
  Here the point is to show that the texture is rotating together with the object. The reflection model used here is a Phong 
  a glossy phong model.
-   ![pt_image](ExampleImages/ColorTexture.png "The default path traced image")
+   ![pt_image](ExampleImages/ColorTexture.png "Simple color texture")
 
  ## Bump maps
  The bump map function is  $P(u,v)=\frac{\cos(20\cdot v)\cdot\sin(20\cdot u)}{50}$. Again it shows
  that the texture rotates with the objects.
-  ![pt_image](ExampleImages/SceneConfigExample.png "The default path traced image")
+  ![pt_image](ExampleImages/BumpMap.png "Simple bump map")
 
 
