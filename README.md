@@ -243,6 +243,6 @@ normal vector on the surface. `Sample` samples a color on the surface.
  ## Bump maps
  The bump map function is  $P(u,v)=\frac{\cos(20\cdot v)\cdot\sin(20\cdot u)}{50}$. Again it shows
  that the texture rotates with the objects.
-  ![pt_image](ExampleImages/BumpMap.png "Simple bump map")
+   ![pt_image](ExampleImages/ColorTexture.png "Simple color texture")
 
 
